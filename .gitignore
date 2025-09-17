@@ -1,0 +1,22 @@
+# Logs
+*.log
+
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Job tracking files (keep these for state persistence)
+# nvidia_jobs_state.json
+# page_hash.txt
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
