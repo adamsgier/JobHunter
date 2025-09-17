@@ -142,22 +142,20 @@ def main():
             f"New positions may be available!\n\n"
             f"🔗 <a href=\"{NVIDIA_JOBS_URL}\">Check Jobs Now</a>\n\n"
             f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
-            f"🤖 Automated by GitHub Actions"
+            f"🤖 Automated check (every 30 minutes)"
         )
         send_telegram_notification(message)
     elif previous_hash:
-        logger.info("✅ No changes detected")
-        # Optionally send daily status (uncomment if desired)
-        # if datetime.now().hour == 9:  # 9 AM UTC daily status
-        #     status_msg = f"✅ Daily Status: No new NVIDIA jobs detected\n⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}"
-        #     send_telegram_notification(status_msg)
+        logger.info("✅ No changes detected - no notification sent")
     else:
         logger.info("📝 First run - baseline established")
+        # Only send welcome message on very first run
         welcome_msg = (
             f"🤖 <b>NVIDIA Job Hunter Activated!</b>\n\n"
             f"I'm now monitoring NVIDIA's student job postings and will notify you of any changes.\n\n"
             f"🔗 <a href=\"{NVIDIA_JOBS_URL}\">Current Jobs Page</a>\n\n"
-            f"⏰ Running every hour via GitHub Actions"
+            f"⏰ Running every 30 minutes via GitHub Actions\n"
+            f"🔕 You'll only receive notifications when jobs change"
         )
         send_telegram_notification(welcome_msg)
     
