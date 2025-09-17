@@ -32,15 +32,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Create environment file
+    - name: Run NVIDIA Job Hunter
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      run: |
-        echo "TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}" > .env
-        echo "TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}" >> .env
-        
-    - name: Run NVIDIA Job Hunter
       run: python jobHunt_github.py
       
     - name: Commit and push job tracking files

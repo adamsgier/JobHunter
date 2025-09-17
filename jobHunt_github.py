@@ -106,8 +106,19 @@ def main():
     """Main job checking function"""
     logger.info("🚀 Starting NVIDIA Job Hunter (GitHub Actions)")
     
+    # Debug environment variables
+    logger.info(f"Environment check:")
+    logger.info(f"TELEGRAM_BOT_TOKEN present: {'Yes' if BOT_TOKEN else 'No'}")
+    logger.info(f"TELEGRAM_CHAT_ID present: {'Yes' if CHAT_ID else 'No'}")
+    
+    if BOT_TOKEN:
+        logger.info(f"Bot token starts with: {BOT_TOKEN[:10]}...")
+    if CHAT_ID:
+        logger.info(f"Chat ID: {CHAT_ID}")
+    
     if not BOT_TOKEN or not CHAT_ID:
         logger.error("❌ Missing Telegram credentials in GitHub secrets")
+        logger.error("Please ensure TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are set in repository secrets")
         return
     
     # Get current page hash
