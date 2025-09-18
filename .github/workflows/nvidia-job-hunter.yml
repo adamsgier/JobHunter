@@ -1,4 +1,4 @@
-name: NVIDIA Job Hunter
+name: Multi-Company Job Hunter (NVIDIA & Intel)
 
 on:
   schedule:
@@ -10,7 +10,7 @@ permissions:
   contents: write  # Allow pushing commits back to repository
 
 jobs:
-  hunt-nvidia-jobs:
+  hunt-jobs:
     runs-on: ubuntu-latest
     
     steps:
@@ -39,14 +39,17 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: |
-          nvidia_jobs_state.json
-          page_hash.txt
-        key: nvidia-job-hunter-state-${{ github.repository }}
+          jobs_state.json
+          nvidia_page_hash.txt
+          intel_page_hash.txt
+        key: multi-job-hunter-state-${{ github.repository }}
         restore-keys: |
+          multi-job-hunter-state-${{ github.repository }}
+          multi-job-hunter-state-
           nvidia-job-hunter-state-${{ github.repository }}
           nvidia-job-hunter-state-
         
-    - name: Run NVIDIA Job Hunter
+    - name: Run Multi-Company Job Hunter
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -57,9 +60,10 @@ jobs:
       if: always()
       with:
         path: |
-          nvidia_jobs_state.json
-          page_hash.txt
-        key: nvidia-job-hunter-state-${{ github.repository }}-${{ github.run_number }}
+          jobs_state.json
+          nvidia_page_hash.txt
+          intel_page_hash.txt
+        key: multi-job-hunter-state-${{ github.repository }}-${{ github.run_number }}
         
     - name: Upload logs as artifacts (on failure)
       if: failure()
@@ -68,6 +72,7 @@ jobs:
         name: job-hunter-logs-${{ github.run_number }}
         path: |
           *.log
-          nvidia_jobs_state.json
-          page_hash.txt
+          jobs_state.json
+          nvidia_page_hash.txt
+          intel_page_hash.txt
         retention-days: 7
