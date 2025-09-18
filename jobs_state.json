@@ -1,0 +1,18 @@
+{
+  "last_check": "2025-09-18T17:55:51.202362",
+  "companies": {
+    "NVIDIA": {
+      "changed": false,
+      "first_run": false,
+      "url": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite?q=Student&locationHierarchy1=2fcb99c455831013ea52bbe14cf9326c",
+      "error": false
+    },
+    "Intel": {
+      "changed": false,
+      "first_run": false,
+      "url": "https://intel.wd1.myworkdayjobs.com/en-US/External?q=student&locations=1e4a4eb3adf1013563ba9174bf817fcd",
+      "error": false
+    }
+  },
+  "total_checks": 2
+}
