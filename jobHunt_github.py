@@ -7,6 +7,7 @@ Simplified for cloud deployment without local file dependencies
 import json
 import logging
 import os
+import re
 import hashlib
 from datetime import datetime
 import requests
@@ -23,14 +24,24 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 def get_page_hash(url: str) -> str:
-    """Get a hash of the page content"""
+    """Get a hash of the page content, filtering out dynamic elements"""
     try:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
         response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
-        return hashlib.md5(response.text.encode()).hexdigest()
+        
+        # Remove dynamic content that changes on every request
+        content = response.text
+        
+        # Remove session IDs and other dynamic identifiers
+        content = re.sub(r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}', 'SESSIONID', content)
+        content = re.sub(r'[a-f0-9]{32}', 'SESSIONID', content)
+        content = re.sub(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[.]\d+Z?', 'TIMESTAMP', content)
+        content = re.sub(r'_[0-9]{13}', '_TIMESTAMP', content)  # Unix timestamps
+        
+        return hashlib.md5(content.encode()).hexdigest()
     except Exception as e:
         logger.error(f"Error getting page hash: {e}")
         return ""

@@ -7,6 +7,7 @@ This version tries different methods to find job postings.
 import json
 import logging
 import os
+import re
 import time
 import hashlib
 from datetime import datetime
@@ -48,8 +49,18 @@ class FinalJobHunter:
             response = self.session.get(url, timeout=10)
             response.raise_for_status()
             
-            # Create hash of the content
-            content_hash = hashlib.md5(response.text.encode()).hexdigest()
+            # Remove dynamic content that changes on every request
+            content = response.text
+            
+            # Remove session IDs and other dynamic identifiers
+            import re
+            content = re.sub(r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}', 'SESSIONID', content)
+            content = re.sub(r'[a-f0-9]{32}', 'SESSIONID', content)
+            content = re.sub(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[.]\d+Z?', 'TIMESTAMP', content)
+            content = re.sub(r'_[0-9]{13}', '_TIMESTAMP', content)  # Unix timestamps
+            
+            # Create hash of the cleaned content
+            content_hash = hashlib.md5(content.encode()).hexdigest()
             return content_hash
             
         except Exception as e:
@@ -72,20 +83,22 @@ class FinalJobHunter:
             else:
                 previous_hash = ""
             
-            # Save current hash
-            with open(hash_file, 'w') as f:
-                f.write(current_hash)
-            
-            # Check if changed
+            # Check if changed BEFORE saving new hash
             if previous_hash and previous_hash != current_hash:
                 logger.info("Page content has changed!")
-                return True
+                changed = True
             elif not previous_hash:
                 logger.info("First run - saving page hash")
-                return False
+                changed = False
             else:
                 logger.info("No changes detected in page content")
-                return False
+                changed = False
+            
+            # Save current hash AFTER comparison
+            with open(hash_file, 'w') as f:
+                f.write(current_hash)
+                
+            return changed
                 
         except Exception as e:
             logger.error(f"Error checking page changes: {e}")
@@ -93,31 +106,29 @@ class FinalJobHunter:
     
     def search_alternative_sources(self) -> List[dict]:
         """Search for NVIDIA student jobs on alternative sites"""
-        sources = [
-            {
-                'name': 'Indeed',
-                'url': 'https://www.indeed.com/jobs?q=NVIDIA+student&sort=date',
-                'search_terms': ['nvidia', 'student', 'intern']
-            },
-            {
-                'name': 'LinkedIn',
-                'url': 'https://www.linkedin.com/jobs/search/?keywords=NVIDIA%20student',
-                'search_terms': ['nvidia', 'student', 'intern']
-            }
-        ]
-        
         jobs = []
-        for source in sources:
-            try:
-                logger.info(f"Checking {source['name']} for NVIDIA jobs...")
-                # Note: This is a placeholder - actual scraping would need
-                # more sophisticated handling for these sites
+        
+        # Check NVIDIA's main careers page for student-related keywords
+        try:
+            logger.info("Checking NVIDIA main careers page...")
+            response = self.session.get("https://www.nvidia.com/en-us/about-nvidia/careers/", timeout=10)
+            response.raise_for_status()
+            
+            content = response.text.lower()
+            student_keywords = ['student', 'intern', 'internship', 'graduate', 'university', 'college']
+            
+            found_keywords = [keyword for keyword in student_keywords if keyword in content]
+            if found_keywords:
+                logger.info(f"Found student-related content on main careers page: {', '.join(found_keywords)}")
+            else:
+                logger.info("No student-specific content found on main careers page")
                 
-                # For demo purposes, we'll just log that we checked
-                logger.info(f"Would check {source['url']} for jobs")
-                
-            except Exception as e:
-                logger.error(f"Error checking {source['name']}: {e}")
+        except Exception as e:
+            logger.error(f"Error checking NVIDIA main careers page: {e}")
+        
+        # Note: Actual scraping of Indeed/LinkedIn would require more sophisticated
+        # handling due to anti-bot measures. For now, we'll log that we would check.
+        logger.info("Note: Alternative job sources (Indeed, LinkedIn) require specialized scraping")
         
         return jobs
     
