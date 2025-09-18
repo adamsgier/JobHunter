@@ -13,11 +13,20 @@ from datetime import datetime
 import requests
 
 # Configuration from environment variables
-NVIDIA_JOBS_URL = "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite?q=Student&locationHierarchy1=2fcb99c455831013ea52bbe14cf9326c"
+COMPANIES = {
+    "NVIDIA": {
+        "url": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite?q=Student&locationHierarchy1=2fcb99c455831013ea52bbe14cf9326c",
+        "hash_file": "nvidia_page_hash.txt"
+    },
+    "Intel": {
+        "url": "https://intel.wd1.myworkdayjobs.com/en-US/External?q=student&locations=1e4a4eb3adf1013563ba9174bf817fcd",
+        "hash_file": "intel_page_hash.txt"
+    }
+}
+
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-JOBS_FILE = "nvidia_jobs_state.json"
-HASH_FILE = "page_hash.txt"
+JOBS_FILE = "jobs_state.json"
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -46,23 +55,23 @@ def get_page_hash(url: str) -> str:
         logger.error(f"Error getting page hash: {e}")
         return ""
 
-def load_previous_hash() -> str:
-    """Load previous page hash"""
+def load_previous_hash(hash_file: str) -> str:
+    """Load previous page hash for a specific company"""
     try:
-        if os.path.exists(HASH_FILE):
-            with open(HASH_FILE, 'r') as f:
+        if os.path.exists(hash_file):
+            with open(hash_file, 'r') as f:
                 return f.read().strip()
     except Exception as e:
-        logger.error(f"Error loading previous hash: {e}")
+        logger.error(f"Error loading previous hash from {hash_file}: {e}")
     return ""
 
-def save_current_hash(hash_value: str):
-    """Save current page hash"""
+def save_current_hash(hash_value: str, hash_file: str):
+    """Save current page hash for a specific company"""
     try:
-        with open(HASH_FILE, 'w') as f:
+        with open(hash_file, 'w') as f:
             f.write(hash_value)
     except Exception as e:
-        logger.error(f"Error saving hash: {e}")
+        logger.error(f"Error saving hash to {hash_file}: {e}")
 
 def send_telegram_notification(message: str) -> bool:
     """Send notification via Telegram"""
@@ -89,12 +98,12 @@ def send_telegram_notification(message: str) -> bool:
         logger.error(f"❌ Telegram notification failed: {e}")
         return False
 
-def update_job_state(page_changed: bool):
-    """Update job tracking state"""
+def update_job_state(company_changes: dict):
+    """Update job tracking state for all companies"""
     try:
         state = {
             "last_check": datetime.now().isoformat(),
-            "page_changed": page_changed,
+            "companies": company_changes,
             "total_checks": 1
         }
         
@@ -113,9 +122,42 @@ def update_job_state(page_changed: bool):
     except Exception as e:
         logger.error(f"Error updating job state: {e}")
 
+def check_company_jobs(company_name: str, company_config: dict) -> dict:
+    """Check jobs for a single company"""
+    logger.info(f"🔍 Checking {company_name} jobs...")
+    
+    # Get current page hash
+    current_hash = get_page_hash(company_config["url"])
+    if not current_hash:
+        logger.error(f"❌ Failed to get {company_name} page content")
+        return {"changed": False, "error": True}
+    
+    # Compare with previous hash
+    previous_hash = load_previous_hash(company_config["hash_file"])
+    page_changed = previous_hash and previous_hash != current_hash
+    
+    # Save current hash
+    save_current_hash(current_hash, company_config["hash_file"])
+    
+    result = {
+        "changed": page_changed,
+        "first_run": not bool(previous_hash),
+        "url": company_config["url"],
+        "error": False
+    }
+    
+    if page_changed:
+        logger.info(f"🔥 {company_name} page content changed!")
+    elif previous_hash:
+        logger.info(f"✅ No {company_name} changes detected")
+    else:
+        logger.info(f"📝 {company_name} first run - baseline established")
+    
+    return result
+
 def main():
-    """Main job checking function"""
-    logger.info("🚀 Starting NVIDIA Job Hunter (GitHub Actions)")
+    """Main job checking function for multiple companies"""
+    logger.info("🚀 Starting Multi-Company Job Hunter (GitHub Actions)")
     
     # Debug environment variables
     logger.info(f"Environment check:")
@@ -132,48 +174,59 @@ def main():
         logger.error("Please ensure TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are set in repository secrets")
         return
     
-    # Get current page hash
-    current_hash = get_page_hash(NVIDIA_JOBS_URL)
-    if not current_hash:
-        logger.error("❌ Failed to get page content")
-        return
+    # Check all companies
+    company_results = {}
+    any_changes = False
+    first_run_companies = []
     
-    # Compare with previous hash
-    previous_hash = load_previous_hash()
-    page_changed = previous_hash and previous_hash != current_hash
+    for company_name, company_config in COMPANIES.items():
+        result = check_company_jobs(company_name, company_config)
+        company_results[company_name] = result
+        
+        if result["changed"]:
+            any_changes = True
+        elif result["first_run"]:
+            first_run_companies.append(company_name)
     
-    # Save current hash
-    save_current_hash(current_hash)
-    
-    if page_changed:
-        logger.info("🔥 Page content changed - sending notification")
-        message = (
-            f"🚨 <b>NVIDIA Jobs Page Updated!</b>\n\n"
-            f"The NVIDIA student jobs page has been updated. "
-            f"New positions may be available!\n\n"
-            f"🔗 <a href=\"{NVIDIA_JOBS_URL}\">Check Jobs Now</a>\n\n"
-            f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
-            f"🤖 Automated check (every 30 minutes)"
-        )
+    # Send notifications based on results
+    if any_changes:
+        # Send notification for companies with changes
+        changed_companies = [name for name, result in company_results.items() if result["changed"]]
+        
+        message = f"🚨 <b>Job Updates Detected!</b>\n\n"
+        
+        for company in changed_companies:
+            config = COMPANIES[company]
+            message += f"🔥 <b>{company}</b> jobs page has been updated!\n"
+            message += f"🔗 <a href=\"{config['url']}\">Check {company} Jobs</a>\n\n"
+        
+        message += f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+        message += f"🤖 Automated check (every 30 minutes)"
+        
         send_telegram_notification(message)
-    elif previous_hash:
-        logger.info("✅ No changes detected - no notification sent")
-    else:
-        logger.info("📝 First run - baseline established")
-        # Only send welcome message on very first run
-        welcome_msg = (
-            f"🤖 <b>NVIDIA Job Hunter Activated!</b>\n\n"
-            f"I'm now monitoring NVIDIA's student job postings and will notify you of any changes.\n\n"
-            f"🔗 <a href=\"{NVIDIA_JOBS_URL}\">Current Jobs Page</a>\n\n"
-            f"⏰ Running every 30 minutes via GitHub Actions\n"
-            f"🔕 You'll only receive notifications when jobs change"
-        )
+        
+    elif first_run_companies:
+        # Send welcome message for first runs
+        welcome_msg = f"🤖 <b>Multi-Company Job Hunter Activated!</b>\n\n"
+        welcome_msg += f"Now monitoring student job postings from:\n"
+        
+        for company_name, company_config in COMPANIES.items():
+            welcome_msg += f"• <b>{company_name}</b>\n"
+            welcome_msg += f"  🔗 <a href=\"{company_config['url']}\">Jobs Page</a>\n"
+        
+        welcome_msg += f"\n⏰ Running every 30 minutes via GitHub Actions\n"
+        welcome_msg += f"🔕 You'll only receive notifications when jobs change"
+        
         send_telegram_notification(welcome_msg)
+        
+    else:
+        # No changes detected for any company
+        logger.info("✅ No changes detected for any company - no notification sent")
     
     # Update tracking state
-    update_job_state(page_changed)
+    update_job_state(company_results)
     
-    logger.info("✅ Job check completed")
+    logger.info("✅ Multi-company job check completed")
 
 if __name__ == "__main__":
     main()
