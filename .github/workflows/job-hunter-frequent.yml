@@ -1,0 +1,64 @@
+name: Job Hunter - Frequent Check
+
+on:
+  schedule:
+    # More frequent checks to catch any missed runs
+    # This runs every 15 minutes but the script will skip if it ran recently
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  frequent-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Restore previous state from cache
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          jobs_state.json
+          nvidia_page_hash.txt
+          intel_page_hash.txt
+        key: multi-job-hunter-state-${{ github.repository }}
+        restore-keys: |
+          multi-job-hunter-state-${{ github.repository }}
+          multi-job-hunter-state-
+        
+    - name: Run Job Hunter (will skip if ran recently)
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        GITHUB_WORKFLOW: "frequent-check"
+      run: python jobHunt_github.py
+      
+    - name: Save state to cache
+      uses: actions/cache/save@v4
+      if: always()
+      with:
+        path: |
+          jobs_state.json
+          nvidia_page_hash.txt
+          intel_page_hash.txt
+        key: multi-job-hunter-state-${{ github.repository }}-${{ github.run_number }}
