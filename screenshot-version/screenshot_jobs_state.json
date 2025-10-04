@@ -1,0 +1,29 @@
+{
+  "last_check": "2025-10-04T16:02:26.987784",
+  "detection_method": "screenshot",
+  "change_threshold": 0.5,
+  "companies": {
+    "NVIDIA": {
+      "changed": false,
+      "first_run": true,
+      "url": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite?q=Student&locationHierarchy1=2fcb99c455831013ea52bbe14cf9326c",
+      "error": false,
+      "method": "screenshot",
+      "reason": "First run - baseline established"
+    },
+    "Intel": {
+      "changed": false,
+      "first_run": true,
+      "url": "https://intel.wd1.myworkdayjobs.com/en-US/External?q=student&locations=1e4a4eb3adf1013563ba9174bf817fcd",
+      "error": false,
+      "method": "screenshot",
+      "reason": "First run - baseline established"
+    }
+  },
+  "total_checks": 1,
+  "timing_info": {
+    "hour": 16,
+    "minute": 2,
+    "on_schedule": false
+  }
+}
