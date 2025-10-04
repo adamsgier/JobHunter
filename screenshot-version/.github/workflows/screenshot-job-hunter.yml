@@ -85,6 +85,8 @@ jobs:
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        USE_AI_ANALYSIS: ${{ vars.USE_AI_ANALYSIS || 'true' }}
         CHANGE_THRESHOLD: ${{ vars.CHANGE_THRESHOLD || '0.5' }}
         SAVE_DEBUG_IMAGES: ${{ vars.SAVE_DEBUG_IMAGES || 'false' }}
       run: |
