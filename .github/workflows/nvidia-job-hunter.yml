@@ -1,4 +1,4 @@
-name: Multi-Company Job Hunter (NVIDIA & Intel)
+name: AI-Enhanced Screenshot Job Hunter (NVIDIA & Intel)
 
 on:
   schedule:
@@ -41,49 +41,83 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip-
         
+    - name: Install system dependencies for screenshot capture
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          wget \
+          gnupg \
+          unzip \
+          curl \
+          xvfb \
+          libnss3 \
+          libatk-bridge2.0-0 \
+          libdrm2 \
+          libxkbcommon0 \
+          libxcomposite1 \
+          libxdamage1 \
+          libxrandr2 \
+          libgbm1 \
+          libxss1 \
+          libasound2
+        
+    - name: Install Google Chrome
+      run: |
+        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r screenshot-version/requirements.txt
         
     - name: Restore previous state from cache
       uses: actions/cache/restore@v4
       with:
         path: |
-          jobs_state.json
-          nvidia_page_hash.txt
-          intel_page_hash.txt
-        key: multi-job-hunter-state-${{ github.repository }}
+          screenshot-version/screenshot_jobs_state.json
+          screenshot-version/nvidia_screenshot.txt
+          screenshot-version/intel_screenshot.txt
+        key: screenshot-job-hunter-state-${{ github.repository }}
         restore-keys: |
+          screenshot-job-hunter-state-${{ github.repository }}
+          screenshot-job-hunter-state-
           multi-job-hunter-state-${{ github.repository }}
           multi-job-hunter-state-
-          nvidia-job-hunter-state-${{ github.repository }}
-          nvidia-job-hunter-state-
         
-    - name: Run Multi-Company Job Hunter
+    - name: Run AI-Enhanced Screenshot Job Hunter
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      run: python jobHunt_github.py
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        USE_AI_ANALYSIS: ${{ vars.USE_AI_ANALYSIS || 'true' }}
+        CHANGE_THRESHOLD: ${{ vars.CHANGE_THRESHOLD || '0.5' }}
+        SAVE_DEBUG_IMAGES: ${{ vars.SAVE_DEBUG_IMAGES || 'false' }}
+      run: |
+        cd screenshot-version
+        python jobHunt_screenshot.py
       
     - name: Save state to cache
       uses: actions/cache/save@v4
       if: always()
       with:
         path: |
-          jobs_state.json
-          nvidia_page_hash.txt
-          intel_page_hash.txt
-        key: multi-job-hunter-state-${{ github.repository }}-${{ github.run_number }}
+          screenshot-version/screenshot_jobs_state.json
+          screenshot-version/nvidia_screenshot.txt
+          screenshot-version/intel_screenshot.txt
+        key: screenshot-job-hunter-state-${{ github.repository }}-${{ github.run_number }}
         
-    - name: Upload logs as artifacts (on failure)
-      if: failure()
+    - name: Upload debug files as artifacts
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: job-hunter-logs-${{ github.run_number }}
+        name: screenshot-job-hunter-debug-${{ github.run_number }}
         path: |
-          *.log
-          jobs_state.json
-          nvidia_page_hash.txt
-          intel_page_hash.txt
+          screenshot-version/*.log
+          screenshot-version/screenshot_jobs_state.json
+          screenshot-version/debug_*.png
+          screenshot-version/*.txt
         retention-days: 7
+        if-no-files-found: ignore
