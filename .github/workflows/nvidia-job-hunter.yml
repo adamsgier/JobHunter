@@ -41,32 +41,33 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip-
         
-    - name: Install system dependencies for screenshot capture
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          wget \
-          gnupg \
-          unzip \
-          curl \
-          xvfb \
-          libnss3 \
-          libatk-bridge2.0-0 \
-          libdrm2 \
-          libxkbcommon0 \
-          libxcomposite1 \
-          libxdamage1 \
-          libxrandr2 \
-          libgbm1 \
-          libxss1 \
-          libasound2
+    - name: Setup Chrome for Screenshots
+      uses: browser-actions/setup-chrome@latest
+      with:
+        chrome-version: stable
+      continue-on-error: true
         
-    - name: Install Google Chrome
+    - name: Install Chrome (fallback method)
+      if: failure()
       run: |
         wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
         echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
         sudo apt-get update
         sudo apt-get install -y google-chrome-stable
+        
+    - name: Install Chrome dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libnss3 \
+          libgbm1 \
+          libxss1 \
+          libatk-bridge2.0-0 \
+          libdrm2 \
+          libxkbcommon0 \
+          libxcomposite1 \
+          libxdamage1 \
+          libxrandr2 || echo "Some dependencies failed, continuing..."
         
     - name: Install Python dependencies
       run: |
