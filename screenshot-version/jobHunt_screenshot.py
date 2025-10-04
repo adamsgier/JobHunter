@@ -346,33 +346,10 @@ def save_screenshot(screenshot_b64: str, company_config: dict):
         logger.error(f"Error saving screenshot to {screenshot_file}: {e}")
 
 def should_run_check() -> bool:
-    """Check if enough time has passed since last run to avoid duplicates"""
-    if not os.path.exists(JOBS_FILE):
-        return True
-    
-    try:
-        with open(JOBS_FILE, 'r') as f:
-            state = json.load(f)
-        
-        last_check_str = state.get("last_check")
-        if not last_check_str:
-            return True
-        
-        last_check = datetime.fromisoformat(last_check_str)
-        time_since_last = datetime.now() - last_check
-        minutes_since = time_since_last.total_seconds() / 60
-        
-        # Only run if at least 25 minutes have passed
-        if minutes_since >= 25:
-            logger.info(f"✅ {minutes_since:.1f} minutes since last run - proceeding")
-            return True
-        else:
-            logger.info(f"⏭️  Only {minutes_since:.1f} minutes since last run - skipping duplicate")
-            return False
-            
-    except Exception as e:
-        logger.error(f"Error checking last run time: {e}")
-        return True
+    """Check if script should run - simplified without duplicate prevention"""
+    # Always run when scheduled - no duplicate prevention needed with single schedule
+    logger.info("✅ Running scheduled job check")
+    return True
 
 def check_company_jobs(company_name: str, company_config: dict) -> dict:
     """Check jobs for a single company using screenshot comparison"""
@@ -522,11 +499,6 @@ def update_job_state(company_results: dict):
 def main():
     """Main job checking function"""
     logger.info("🚀 Starting Screenshot-Based Multi-Company Job Hunter")
-    
-    # Check if we should run to avoid duplicate executions
-    if not should_run_check():
-        logger.info("🚪 Exiting early to prevent duplicate run")
-        return
     
     # Environment information
     import platform

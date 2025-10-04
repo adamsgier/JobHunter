@@ -2,18 +2,8 @@ name: AI-Enhanced Screenshot Job Hunter (NVIDIA & Intel)
 
 on:
   schedule:
-    # Multiple schedules for better reliability (GitHub Actions can delay cron jobs)
-    # This ensures we get runs approximately every 30 minutes even with delays
-    
-    # Primary schedule: Every 30 minutes at exact times
+    # Single schedule: Every 30 minutes
     - cron: '0,30 * * * *'    # Run at :00 and :30 of each hour
-    
-    # Backup schedules to catch GitHub Actions delays
-    - cron: '5,35 * * * *'    # Run at :05 and :35 (5min offset backup)
-    - cron: '10,40 * * * *'   # Run at :10 and :40 (10min offset backup)
-    
-    # Note: Script includes duplicate prevention logic to avoid multiple runs
-    # when schedules overlap due to GitHub Actions timing irregularities
     
   workflow_dispatch: # Allow manual trigger from GitHub Actions tab
 
