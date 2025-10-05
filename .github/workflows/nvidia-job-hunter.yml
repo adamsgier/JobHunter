@@ -2,8 +2,8 @@ name: AI-Enhanced Screenshot Job Hunter (NVIDIA & Intel)
 
 on:
   schedule:
-    # Single schedule: Every 30 minutes
-    - cron: '0,30 * * * *'    # Run at :00 and :30 of each hour
+    # Run every 20 minutes, but skip 00:00-08:00 (runs from 08:00-23:59)
+    - cron: '*/20 8-23 * * *'    # Run at :00, :20, :40 of hours 8-23
     
   workflow_dispatch: # Allow manual trigger from GitHub Actions tab
 
