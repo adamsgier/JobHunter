@@ -566,10 +566,31 @@ def main():
             # Add AI analysis if available
             if "ai_analysis" in result:
                 ai_analysis = result["ai_analysis"]
+                message += f"\n🤖 <b>AI Analysis:</b>\n"
+                
                 if ai_analysis.get("description"):
-                    message += f"🤖 AI: {ai_analysis['description']}\n"
+                    message += f"📝 {ai_analysis['description']}\n"
+                
                 if ai_analysis.get("confidence", 0) > 0:
                     message += f"🎯 Confidence: {ai_analysis['confidence']*100:.0f}%\n"
+                
+                # Add specific details if available
+                if ai_analysis.get("details") and isinstance(ai_analysis["details"], list):
+                    if ai_analysis["details"]:
+                        message += f"🔍 <b>Specific Changes:</b>\n"
+                        for detail in ai_analysis["details"][:3]:  # Limit to 3 details to avoid long messages
+                            message += f"  • {detail}\n"
+                
+                # Add change status
+                if ai_analysis.get("has_changes") is not None:
+                    status = "✅ Changes Confirmed" if ai_analysis["has_changes"] else "❌ No Meaningful Changes"
+                    message += f"🔎 AI Assessment: {status}\n"
+                
+                # Show error if AI analysis failed
+                if ai_analysis.get("error"):
+                    message += f"⚠️ AI Error: {ai_analysis['error']}\n"
+            else:
+                message += f"\n🔍 <b>Detection Method:</b> Pixel-based comparison only\n"
             
             message += f"📊 Change: {result.get('change_percentage', 0):.2f}% of pixels\n"
             message += f"🔗 <a href=\"{config['url']}\">Check {company} Jobs</a>\n\n"
