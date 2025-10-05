@@ -71,12 +71,22 @@ jobs:
           screenshot-version/screenshot_jobs_state.json
           screenshot-version/nvidia_screenshot.txt
           screenshot-version/intel_screenshot.txt
-        key: screenshot-job-hunter-state-${{ github.repository }}
+        key: screenshot-job-hunter-state-latest
         restore-keys: |
-          screenshot-job-hunter-state-${{ github.repository }}
+          screenshot-job-hunter-state-latest
           screenshot-job-hunter-state-
-          multi-job-hunter-state-${{ github.repository }}
           multi-job-hunter-state-
+        
+    - name: Debug cache files before run
+      run: |
+        echo "=== Cache Debug Info ==="
+        echo "Working directory: $(pwd)"
+        echo "Contents of repository root:"
+        ls -la
+        echo "Contents of screenshot-version:"
+        ls -la screenshot-version/ || echo "screenshot-version directory not found"
+        echo "Checking for screenshot files:"
+        find . -name "*screenshot*.txt" -o -name "*screenshot*.json" | head -10
         
     - name: Run AI-Enhanced Screenshot Job Hunter
       env:
@@ -89,6 +99,17 @@ jobs:
       run: |
         cd screenshot-version
         python jobHunt_screenshot.py
+        
+    - name: Debug cache files after run
+      if: always()
+      run: |
+        echo "=== Files created after run ==="
+        echo "Contents of screenshot-version:"
+        ls -la screenshot-version/ || echo "screenshot-version directory not found"
+        echo "Screenshot files:"
+        find screenshot-version/ -name "*screenshot*.txt" -exec wc -l {} \; 2>/dev/null || echo "No screenshot files found"
+        echo "State file:"
+        cat screenshot-version/screenshot_jobs_state.json 2>/dev/null || echo "No state file found"
       
     - name: Save state to cache
       uses: actions/cache/save@v4
@@ -98,7 +119,7 @@ jobs:
           screenshot-version/screenshot_jobs_state.json
           screenshot-version/nvidia_screenshot.txt
           screenshot-version/intel_screenshot.txt
-        key: screenshot-job-hunter-state-${{ github.repository }}-${{ github.run_number }}
+        key: screenshot-job-hunter-state-latest
         
     - name: Upload debug files as artifacts
       if: always()

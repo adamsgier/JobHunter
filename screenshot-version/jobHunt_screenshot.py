@@ -323,11 +323,17 @@ def load_previous_screenshot(company_config: dict) -> Optional[str]:
             with open(screenshot_file, 'r') as f:
                 screenshot_data = f.read().strip()
             
-            # Validate base64 format
-            if len(screenshot_data) > 100 and screenshot_data.isalnum():
-                return screenshot_data
+            # Validate base64 format (check length and basic base64 characters)
+            if len(screenshot_data) > 100:
+                # Basic validation for base64 format
+                import re
+                if re.match(r'^[A-Za-z0-9+/]*={0,2}$', screenshot_data):
+                    return screenshot_data
+                else:
+                    logger.warning(f"Invalid base64 format in {screenshot_file}, ignoring")
+                    return None
             else:
-                logger.warning(f"Invalid screenshot format in {screenshot_file}, ignoring")
+                logger.warning(f"Screenshot file {screenshot_file} too short, ignoring")
                 return None
     except Exception as e:
         logger.error(f"Error loading previous screenshot from {screenshot_file}: {e}")
