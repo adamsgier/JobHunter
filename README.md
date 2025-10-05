@@ -134,8 +134,8 @@ GEMINI_API_KEY=AIzaSyA1B2C3D4E5F6G7H8I9J0K
 #### **For Local Development**
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/NvidiaJobHunter.git
-cd NvidiaJobHunter/screenshot-version
+git clone https://github.com/yourusername/JobHunter.git
+cd JobHunter/screenshot-version
 
 # Create environment file
 cp .env.example .env
@@ -425,4 +425,4 @@ Pull requests welcome! Areas for improvement:
 ### **Real-World Performance**
 > *"Went from 20+ false notifications per day to 2-3 real job alerts per week. The AI actually understands when there are new positions vs just page updates."* - Early User
 
-**Ready to start?** 🚀 [Fork the repository](https://github.com/adamsgier/NvidiaJobHunter/fork) and set up your automated job hunter in 3 minutes!
+**Ready to start?** 🚀 [Fork the repository](https://github.com/adamsgier/JobHunter/fork) and set up your automated job hunter in 3 minutes!

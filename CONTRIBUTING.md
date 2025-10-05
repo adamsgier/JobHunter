@@ -48,8 +48,8 @@ Thank you for your interest in contributing! This project welcomes contributions
 ### **Local Environment**
 ```bash
 # Clone your fork
-git clone https://github.com/yourusername/NvidiaJobHunter.git
-cd NvidiaJobHunter
+git clone https://github.com/yourusername/JobHunter.git
+cd JobHunter
 
 # Create virtual environment
 python -m venv venv
