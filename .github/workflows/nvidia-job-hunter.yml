@@ -100,9 +100,8 @@ jobs:
           screenshot-version/screenshot_jobs_state.json
           screenshot-version/nvidia_screenshot.txt
           screenshot-version/intel_screenshot.txt
-        key: screenshot-job-hunter-state-latest
+        key: screenshot-job-hunter-state-${{ github.run_number }}
         restore-keys: |
-          screenshot-job-hunter-state-latest
           screenshot-job-hunter-state-
           multi-job-hunter-state-
         
@@ -122,12 +121,32 @@ jobs:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        USE_AI_ANALYSIS: ${{ vars.USE_AI_ANALYSIS || 'true' }}
-        CHANGE_THRESHOLD: ${{ vars.CHANGE_THRESHOLD || '0.5' }}
-        SAVE_DEBUG_IMAGES: ${{ vars.SAVE_DEBUG_IMAGES || 'false' }}
+        USE_AI_ANALYSIS: 'true'
+        CHANGE_THRESHOLD: '0.5'
+        SAVE_DEBUG_IMAGES: 'false'
       run: |
         cd screenshot-version
         python jobHunt_screenshot.py
+        
+    - name: Ensure cache files exist and are valid
+      if: always()
+      run: |
+        cd screenshot-version
+        echo "=== Ensuring cache files exist ==="
+        
+        # Create empty files if they don't exist
+        [ ! -f screenshot_jobs_state.json ] && echo "{}" > screenshot_jobs_state.json
+        [ ! -f nvidia_screenshot.txt ] && echo "" > nvidia_screenshot.txt
+        [ ! -f intel_screenshot.txt ] && echo "" > intel_screenshot.txt
+        
+        # Verify files exist and have content
+        echo "Files after ensuring existence:"
+        ls -la screenshot_jobs_state.json nvidia_screenshot.txt intel_screenshot.txt 2>/dev/null || echo "Some files missing"
+        
+        # Check if state file is valid JSON
+        if [ -f screenshot_jobs_state.json ]; then
+          python -c "import json; json.load(open('screenshot_jobs_state.json'))" 2>/dev/null && echo "✅ State file is valid JSON" || echo "⚠️ State file is not valid JSON"
+        fi
         
     - name: Debug cache files after run
       if: always()
@@ -135,10 +154,18 @@ jobs:
         echo "=== Files created after run ==="
         echo "Contents of screenshot-version:"
         ls -la screenshot-version/ || echo "screenshot-version directory not found"
-        echo "Screenshot files:"
+        echo "Screenshot files with sizes:"
+        find screenshot-version/ -name "*screenshot*.txt" -exec ls -lh {} \; 2>/dev/null || echo "No screenshot files found"
+        echo "Screenshot file line counts:"
         find screenshot-version/ -name "*screenshot*.txt" -exec wc -l {} \; 2>/dev/null || echo "No screenshot files found"
-        echo "State file:"
-        cat screenshot-version/screenshot_jobs_state.json 2>/dev/null || echo "No state file found"
+        echo "State file contents:"
+        if [ -f screenshot-version/screenshot_jobs_state.json ]; then
+          echo "State file size: $(ls -lh screenshot-version/screenshot_jobs_state.json)"
+          echo "State file preview:"
+          head -20 screenshot-version/screenshot_jobs_state.json 2>/dev/null || echo "Could not read state file"
+        else
+          echo "No state file found"
+        fi
       
     - name: Save state to cache
       uses: actions/cache/save@v4
@@ -148,7 +175,7 @@ jobs:
           screenshot-version/screenshot_jobs_state.json
           screenshot-version/nvidia_screenshot.txt
           screenshot-version/intel_screenshot.txt
-        key: screenshot-job-hunter-state-latest
+        key: screenshot-job-hunter-state-${{ github.run_number }}
         
     - name: Upload debug files as artifacts
       if: always()
