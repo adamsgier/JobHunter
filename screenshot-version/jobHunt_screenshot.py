@@ -437,6 +437,11 @@ def check_company_jobs(company_name: str, company_config: dict) -> dict:
         "comparison_details": comparison
     }
     
+    # Add AI analysis to result if available
+    if "ai_analysis" in comparison:
+        result["ai_analysis"] = comparison["ai_analysis"]
+        logger.info(f"🤖 AI Analysis for {company_name}: {comparison['ai_analysis'].get('description', 'No description')}")
+    
     if comparison["changed"]:
         logger.info(f"🔥 {company_name} visual content changed!")
         logger.warning(f"CHANGE DETECTED for {company_name}: {comparison['reason']}")
