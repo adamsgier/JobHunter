@@ -20,3 +20,17 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Secrets and sensitive data
+*.pem
+*.key
+config.json
+secrets.json
+
+# Runtime files
+*.pid
+*.lock
+
+# Debug and temp files
+debug_*.png
+temp_*.txt

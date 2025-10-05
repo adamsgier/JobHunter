@@ -1,0 +1,56 @@
+MIT License
+
+Copyright (c) 2024 AI-Enhanced Job Hunter Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## Third-Party Services
+
+This software integrates with third-party services that have their own terms:
+
+### Telegram Bot API
+- Terms: https://core.telegram.org/bots/faq#what-messages-will-my-bot-get
+- Privacy: Messages sent through this bot are subject to Telegram's privacy policy
+
+### Google Gemini API
+- Terms: https://ai.google.dev/terms
+- Privacy: Images processed by Gemini are subject to Google's AI service terms
+
+### GitHub Actions
+- Terms: https://docs.github.com/en/site-policy/github-terms/github-terms-of-service
+- Usage: Free tier limits apply, see GitHub pricing for details
+
+### Company Career Pages
+- This software only accesses publicly available job listings
+- Users are responsible for compliance with individual company terms of service
+- No circumvention of access controls or rate limiting
+
+## Disclaimer
+
+- This software is for educational and personal use only
+- Users are responsible for complying with all applicable laws and terms of service
+- The authors assume no liability for any misuse of this software
+- Job monitoring should respect website policies and rate limits
+
+## Data Protection
+
+- This software processes only publicly available job listing data
+- No personal information is collected, stored, or transmitted
+- Users maintain full control over all data and API keys
+- Screenshots are stored temporarily and can be deleted at any time

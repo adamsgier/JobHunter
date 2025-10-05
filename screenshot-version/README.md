@@ -46,8 +46,8 @@ cp .env.example .env
 
 Edit `.env` and fill in your values:
 ```bash
-TELEGRAM_BOT_TOKEN=***REMOVED***
-TELEGRAM_CHAT_ID=***REMOVED***
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+TELEGRAM_CHAT_ID=your_chat_id_here
 
 # Optional: AI Enhancement (Recommended)
 GEMINI_API_KEY=your_gemini_api_key_here

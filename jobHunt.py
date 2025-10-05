@@ -3,8 +3,18 @@ from bs4 import BeautifulSoup
 
 # Config
 URL = "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite?q=Student&locationHierarchy1=2fcb99c455831013ea52bbe14cf9326c"  # replace with student jobs page
-BOT_TOKEN = "***REMOVED***"
-CHAT_ID = "***REMOVED***"
+import requests
+from bs4 import BeautifulSoup
+import time
+import hashlib
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 def get_jobs():
     response = requests.get(URL)
@@ -15,6 +25,10 @@ def get_jobs():
     return [job.text.strip() for job in jobs]
 
 def send_telegram(message):
+    if not BOT_TOKEN or not CHAT_ID:
+        print("Error: TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set in .env file")
+        return
+    
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {"chat_id": CHAT_ID, "text": message}
     requests.post(url, data=payload)
