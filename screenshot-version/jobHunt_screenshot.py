@@ -50,6 +50,17 @@ COMPANIES = {
             '.css-1pe6dbz',
             '[role="main"]'
         ]
+    },
+    "IBM": {
+        "url": "https://ibmglobal.avature.net/en_US/careers/OpenJobs/student?10296=%5B103861%5D&10296_format=7813&listFilterMode=1&jobRecordsPerPage=9&",
+        "screenshot_file": "ibm_screenshot.txt",
+        "selectors": [
+            '[class*="job-list"]',
+            '[class*="jobs-list"]',
+            '[class*="search-results"]',
+            '[role="main"]',
+            'body'
+        ]
     }
 }
 
