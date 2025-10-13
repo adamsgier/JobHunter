@@ -13,6 +13,7 @@ import base64
 import hashlib
 from datetime import datetime
 from typing import Dict, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -370,96 +371,109 @@ def should_run_check() -> bool:
 
 def check_company_jobs(company_name: str, company_config: dict) -> dict:
     """Check jobs for a single company using screenshot comparison"""
-    logger.info(f"🔍 Checking {company_name} jobs with screenshot method...")
-    logger.info(f"URL: {company_config['url']}")
-    
-    # Take current screenshot
-    current_screenshot = take_screenshot(company_config["url"], company_name, company_config)
-    if not current_screenshot:
-        logger.error(f"❌ Failed to capture screenshot for {company_name}")
-        return {"changed": False, "error": True, "method": "screenshot"}
-    
-    # Load previous screenshot
-    previous_screenshot = load_previous_screenshot(company_config)
-    
-    if not previous_screenshot:
-        # First run - save baseline
+    try:
+        logger.info(f"🔍 Checking {company_name} jobs with screenshot method...")
+        logger.info(f"URL: {company_config['url']}")
+        
+        # Take current screenshot
+        current_screenshot = take_screenshot(company_config["url"], company_name, company_config)
+        if not current_screenshot:
+            logger.error(f"❌ Failed to capture screenshot for {company_name}")
+            return {"changed": False, "error": True, "method": "screenshot", "company": company_name}
+        
+        # Load previous screenshot
+        previous_screenshot = load_previous_screenshot(company_config)
+        
+        if not previous_screenshot:
+            # First run - save baseline
+            save_screenshot(current_screenshot, company_config)
+            
+            # Run AI analysis on first screenshot if available
+            ai_baseline = None
+            if ai_analyzer and ai_analyzer.is_enabled():
+                logger.info(f"🤖 Analyzing baseline screenshot for {company_name}...")
+                screenshot_bytes = base64.b64decode(current_screenshot)
+                ai_baseline = ai_analyzer.analyze_single_screenshot(screenshot_bytes, company_name, is_baseline=True)
+            
+            logger.info(f"📝 {company_name} first screenshot - baseline established")
+            result = {
+                "changed": False,
+                "first_run": True,
+                "url": company_config["url"],
+                "error": False,
+                "method": "screenshot",
+                "reason": "First run - baseline established",
+                "company": company_name
+            }
+            
+            if ai_baseline:
+                result["ai_baseline"] = ai_baseline
+                
+            return result
+        
+        # Compare screenshots
+        comparison = compare_screenshots(previous_screenshot, current_screenshot, company_name)
+        
+        # Enhanced logging
+        logger.info(f"{company_name} screenshot comparison:")
+        logger.info(f"  Changed: {comparison['changed']}")
+        logger.info(f"  Reason: {comparison['reason']}")
+        
+        # Double-check mechanism for screenshot changes
+        if comparison["changed"]:
+            logger.info(f"🔍 Double-checking {company_name} screenshot change...")
+            time.sleep(5)
+            
+            verify_screenshot = take_screenshot(company_config["url"], company_name, company_config)
+            if verify_screenshot:
+                verify_comparison = compare_screenshots(current_screenshot, verify_screenshot, company_name)
+                if verify_comparison["changed"] and verify_comparison["change_percentage"] > 1.0:
+                    logger.warning(f"⚠️  {company_name} page is visually unstable")
+                    logger.warning(f"Original vs Verify: {verify_comparison['change_percentage']:.3f}% difference")
+                    # Use the verification screenshot as it might be more stable
+                    current_screenshot = verify_screenshot
+                    comparison = compare_screenshots(previous_screenshot, current_screenshot, company_name)
+                else:
+                    logger.info(f"✅ {company_name} screenshot change confirmed (stable on recheck)")
+        
+        # Save current screenshot
         save_screenshot(current_screenshot, company_config)
         
-        # Run AI analysis on first screenshot if available
-        ai_baseline = None
-        if ai_analyzer and ai_analyzer.is_enabled():
-            logger.info(f"🤖 Analyzing baseline screenshot for {company_name}...")
-            screenshot_bytes = base64.b64decode(current_screenshot)
-            ai_baseline = ai_analyzer.analyze_single_screenshot(screenshot_bytes, company_name, is_baseline=True)
-        
-        logger.info(f"📝 {company_name} first screenshot - baseline established")
         result = {
-            "changed": False,
-            "first_run": True,
+            "changed": comparison["changed"],
+            "first_run": False,
             "url": company_config["url"],
             "error": False,
             "method": "screenshot",
-            "reason": "First run - baseline established"
+            "change_percentage": comparison.get("change_percentage", 0),
+            "threshold": CHANGE_THRESHOLD,
+            "reason": comparison.get("reason", "Unknown"),
+            "comparison_details": comparison,
+            "company": company_name
         }
         
-        if ai_baseline:
-            result["ai_baseline"] = ai_baseline
-            
+        # Add AI analysis to result if available
+        if "ai_analysis" in comparison:
+            result["ai_analysis"] = comparison["ai_analysis"]
+            logger.info(f"🤖 AI Analysis for {company_name}: {comparison['ai_analysis'].get('description', 'No description')}")
+        
+        if comparison["changed"]:
+            logger.info(f"🔥 {company_name} visual content changed!")
+            logger.warning(f"CHANGE DETECTED for {company_name}: {comparison['reason']}")
+        else:
+            logger.info(f"✅ No visual changes detected for {company_name}")
+        
         return result
     
-    # Compare screenshots
-    comparison = compare_screenshots(previous_screenshot, current_screenshot, company_name)
-    
-    # Enhanced logging
-    logger.info(f"{company_name} screenshot comparison:")
-    logger.info(f"  Changed: {comparison['changed']}")
-    logger.info(f"  Reason: {comparison['reason']}")
-    
-    # Double-check mechanism for screenshot changes
-    if comparison["changed"]:
-        logger.info(f"🔍 Double-checking {company_name} screenshot change...")
-        time.sleep(5)
-        
-        verify_screenshot = take_screenshot(company_config["url"], company_name, company_config)
-        if verify_screenshot:
-            verify_comparison = compare_screenshots(current_screenshot, verify_screenshot, company_name)
-            if verify_comparison["changed"] and verify_comparison["change_percentage"] > 1.0:
-                logger.warning(f"⚠️  {company_name} page is visually unstable")
-                logger.warning(f"Original vs Verify: {verify_comparison['change_percentage']:.3f}% difference")
-                # Use the verification screenshot as it might be more stable
-                current_screenshot = verify_screenshot
-                comparison = compare_screenshots(previous_screenshot, current_screenshot, company_name)
-            else:
-                logger.info(f"✅ {company_name} screenshot change confirmed (stable on recheck)")
-    
-    # Save current screenshot
-    save_screenshot(current_screenshot, company_config)
-    
-    result = {
-        "changed": comparison["changed"],
-        "first_run": False,
-        "url": company_config["url"],
-        "error": False,
-        "method": "screenshot",
-        "change_percentage": comparison.get("change_percentage", 0),
-        "threshold": CHANGE_THRESHOLD,
-        "reason": comparison.get("reason", "Unknown"),
-        "comparison_details": comparison
-    }
-    
-    # Add AI analysis to result if available
-    if "ai_analysis" in comparison:
-        result["ai_analysis"] = comparison["ai_analysis"]
-        logger.info(f"🤖 AI Analysis for {company_name}: {comparison['ai_analysis'].get('description', 'No description')}")
-    
-    if comparison["changed"]:
-        logger.info(f"🔥 {company_name} visual content changed!")
-        logger.warning(f"CHANGE DETECTED for {company_name}: {comparison['reason']}")
-    else:
-        logger.info(f"✅ No visual changes detected for {company_name}")
-    
-    return result
+    except Exception as e:
+        logger.error(f"❌ Error checking {company_name}: {e}")
+        return {
+            "changed": False,
+            "error": True,
+            "method": "screenshot",
+            "reason": f"Error: {str(e)}",
+            "company": company_name
+        }
 
 def send_telegram_notification(message: str) -> bool:
     """Send notification via Telegram"""
@@ -554,19 +568,47 @@ def main():
         logger.error("❌ Missing Telegram credentials")
         return
     
-    # Check all companies
+    # Check all companies concurrently
+    logger.info(f"🚀 Starting concurrent checks for {len(COMPANIES)} companies...")
+    start_time = time.time()
+    
     company_results = {}
     any_changes = False
     first_run_companies = []
     
-    for company_name, company_config in COMPANIES.items():
-        result = check_company_jobs(company_name, company_config)
-        company_results[company_name] = result
+    # Use ThreadPoolExecutor for concurrent execution
+    with ThreadPoolExecutor(max_workers=len(COMPANIES)) as executor:
+        # Submit all company checks
+        future_to_company = {
+            executor.submit(check_company_jobs, company_name, company_config): company_name
+            for company_name, company_config in COMPANIES.items()
+        }
         
-        if result["changed"]:
-            any_changes = True
-        elif result["first_run"]:
-            first_run_companies.append(company_name)
+        # Collect results as they complete
+        for future in as_completed(future_to_company):
+            company_name = future_to_company[future]
+            try:
+                result = future.result()
+                company_results[company_name] = result
+                
+                if result["changed"]:
+                    any_changes = True
+                elif result.get("first_run", False):
+                    first_run_companies.append(company_name)
+                    
+                logger.info(f"✅ Completed check for {company_name}")
+            except Exception as exc:
+                logger.error(f"❌ {company_name} generated an exception: {exc}")
+                company_results[company_name] = {
+                    "changed": False,
+                    "error": True,
+                    "method": "screenshot",
+                    "reason": f"Exception: {str(exc)}",
+                    "company": company_name
+                }
+    
+    elapsed_time = time.time() - start_time
+    logger.info(f"⏱️  All checks completed in {elapsed_time:.2f} seconds")
     
     # Send notifications based on results
     if any_changes:
