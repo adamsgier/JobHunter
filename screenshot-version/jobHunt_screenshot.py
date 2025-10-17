@@ -379,7 +379,14 @@ def check_company_jobs(company_name: str, company_config: dict) -> dict:
         current_screenshot = take_screenshot(company_config["url"], company_name, company_config)
         if not current_screenshot:
             logger.error(f"❌ Failed to capture screenshot for {company_name}")
-            return {"changed": False, "error": True, "method": "screenshot", "company": company_name}
+            return {
+                "changed": False,
+                "error": True,
+                "first_run": False,
+                "method": "screenshot",
+                "company": company_name,
+                "reason": "Failed to capture screenshot"
+            }
         
         # Load previous screenshot
         previous_screenshot = load_previous_screenshot(company_config)
@@ -470,6 +477,7 @@ def check_company_jobs(company_name: str, company_config: dict) -> dict:
         return {
             "changed": False,
             "error": True,
+            "first_run": False,
             "method": "screenshot",
             "reason": f"Error: {str(e)}",
             "company": company_name
@@ -591,7 +599,7 @@ def main():
                 result = future.result()
                 company_results[company_name] = result
                 
-                if result["changed"]:
+                if result.get("changed", False):
                     any_changes = True
                 elif result.get("first_run", False):
                     first_run_companies.append(company_name)
@@ -602,6 +610,7 @@ def main():
                 company_results[company_name] = {
                     "changed": False,
                     "error": True,
+                    "first_run": False,
                     "method": "screenshot",
                     "reason": f"Exception: {str(exc)}",
                     "company": company_name
@@ -689,8 +698,8 @@ def main():
     logger.info(f"  Detection method: Screenshot comparison")
     logger.info(f"  Change threshold: {CHANGE_THRESHOLD}%")
     logger.info(f"  Companies checked: {len(company_results)}")
-    logger.info(f"  Visual changes detected: {sum(1 for r in company_results.values() if r['changed'])}")
-    logger.info(f"  First runs: {sum(1 for r in company_results.values() if r['first_run'])}")
+    logger.info(f"  Visual changes detected: {sum(1 for r in company_results.values() if r.get('changed', False))}")
+    logger.info(f"  First runs: {sum(1 for r in company_results.values() if r.get('first_run', False))}")
     logger.info(f"  Errors: {sum(1 for r in company_results.values() if r.get('error', False))}")
     
     logger.info("✅ Screenshot-based job check completed")

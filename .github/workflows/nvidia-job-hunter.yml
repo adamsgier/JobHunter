@@ -112,12 +112,38 @@ jobs:
           pip install -r screenshot-version/requirements.txt --quiet
         fi
     
-    - name: Verify Chrome and ChromeDriver
+    - name: Fix ChromeDriver version mismatch
       run: |
         echo "=== Chrome Version ==="
+        CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+')
+        echo "Chrome version: $CHROME_VERSION"
+        
+        echo "=== ChromeDriver Version ==="
+        if command -v chromedriver &> /dev/null; then
+          CHROMEDRIVER_VERSION=$(chromedriver --version | grep -oP '\d+\.\d+\.\d+\.\d+' | head -1)
+          echo "ChromeDriver version: $CHROMEDRIVER_VERSION"
+          
+          # Extract major version
+          CHROME_MAJOR=$(echo $CHROME_VERSION | cut -d'.' -f1)
+          CHROMEDRIVER_MAJOR=$(echo $CHROMEDRIVER_VERSION | cut -d'.' -f1)
+          
+          if [ "$CHROME_MAJOR" != "$CHROMEDRIVER_MAJOR" ]; then
+            echo "⚠️ Version mismatch detected! Removing incompatible ChromeDriver..."
+            sudo rm -f /usr/bin/chromedriver /usr/local/bin/chromedriver
+            echo "✅ ChromeDriver removed - Selenium will auto-download compatible version"
+          else
+            echo "✅ ChromeDriver version compatible"
+          fi
+        else
+          echo "ℹ️ ChromeDriver not found in PATH - Selenium will auto-download"
+        fi
+    
+    - name: Verify Setup
+      run: |
+        echo "=== Final Chrome Version ==="
         google-chrome --version || echo "Chrome not found"
-        echo "=== ChromeDriver Info ==="
-        python -c "from selenium import webdriver; print('Selenium version:', webdriver.__version__)" || echo "Selenium not ready"
+        echo "=== Selenium will manage ChromeDriver automatically ==="
+        python -c "from selenium import webdriver; print('Selenium version:', webdriver.__version__)"
         
     - name: Restore previous state from cache
       uses: actions/cache/restore@v4
