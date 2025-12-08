@@ -153,6 +153,7 @@ jobs:
           screenshot-version/nvidia_screenshot.txt
           screenshot-version/intel_screenshot.txt
           screenshot-version/ibm_screenshot.txt
+          screenshot-version/microsoft_screenshot.txt
         key: screenshot-job-hunter-state-${{ github.run_number }}
         restore-keys: |
           screenshot-job-hunter-state-
@@ -192,10 +193,11 @@ jobs:
         [ ! -f nvidia_screenshot.txt ] && echo "" > nvidia_screenshot.txt
         [ ! -f intel_screenshot.txt ] && echo "" > intel_screenshot.txt
         [ ! -f ibm_screenshot.txt ] && echo "" > ibm_screenshot.txt
+        [ ! -f microsoft_screenshot.txt ] && echo "" > microsoft_screenshot.txt
         
         # Verify files exist and have content
         echo "Files after ensuring existence:"
-        ls -la screenshot_jobs_state.json nvidia_screenshot.txt intel_screenshot.txt ibm_screenshot.txt 2>/dev/null || echo "Some files missing"
+        ls -la screenshot_jobs_state.json nvidia_screenshot.txt intel_screenshot.txt ibm_screenshot.txt microsoft_screenshot.txt 2>/dev/null || echo "Some files missing"
         
         # Check if state file is valid JSON
         if [ -f screenshot_jobs_state.json ]; then
@@ -230,6 +232,7 @@ jobs:
           screenshot-version/nvidia_screenshot.txt
           screenshot-version/intel_screenshot.txt
           screenshot-version/ibm_screenshot.txt
+          screenshot-version/microsoft_screenshot.txt
         key: screenshot-job-hunter-state-${{ github.run_number }}
         
     - name: Upload debug files as artifacts
