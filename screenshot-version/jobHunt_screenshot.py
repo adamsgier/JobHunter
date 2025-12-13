@@ -64,7 +64,7 @@ COMPANIES = {
         ]
     },
     "Microsoft": {
-        "url": "https://apply.careers.microsoft.com/careers?start=0&location=Haifa%2C++Haifa+District%2C++Israel+&sort_by=distance&filter_distance=160&filter_include_remote=1&filter_employment_type=internship%2Cpart-time&filter_seniority=Intern",
+        "url": "https://apply.careers.microsoft.com/careers?start=0&location=Israel&sort_by=distance&filter_include_remote=1&filter_employment_type=internship",
         "screenshot_file": "microsoft_screenshot.txt",
         "selectors": [
             '[data-ph-id*="jobs"]',
