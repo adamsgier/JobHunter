@@ -34,3 +34,11 @@ secrets.json
 # Debug and temp files
 debug_*.png
 temp_*.txt
+/screenshot-version/screenshots_export
+screenshot-version/jobHunt_screenshot_export.py
+screenshot-version/ibm_screenshot.txt
+screenshot-version/intel_screenshot.txt
+screenshot-version/microsoft_screenshot.txt
+screenshot-version/nvidia_screenshot.txt
+screenshot-version/screenshot_jobs_state.json
+*.txt
