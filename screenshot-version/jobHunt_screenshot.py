@@ -67,10 +67,12 @@ COMPANIES = {
         "url": "https://apply.careers.microsoft.com/careers?start=0&location=Israel&sort_by=distance&filter_include_remote=1&filter_employment_type=internship",
         "screenshot_file": "microsoft_screenshot.txt",
         "selectors": [
-            '[data-ph-id*="jobs"]',
-            '[class*="job"]',
-            '[class*="search-results"]',
-            '[role="main"]',
+            '#app',
+            '[id="app"]',
+            '[data-automation-id="jobsList"]',
+            '[role="list"]',
+            '[class*="search"]',
+            'main',
             'body'
         ]
     }
@@ -123,7 +125,7 @@ def setup_selenium_driver():
     chrome_options.add_argument('--disable-extensions')
     chrome_options.add_argument('--disable-plugins')
     chrome_options.add_argument('--disable-images')  # Disable image loading for faster screenshots
-    chrome_options.add_argument('--disable-javascript')  # Disable JS for more stable screenshots
+    # Note: JavaScript is required for modern career portals like Microsoft
     
     try:
         driver = webdriver.Chrome(options=chrome_options)
