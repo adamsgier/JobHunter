@@ -280,3 +280,6 @@ def create_ai_analyzer(api_key: Optional[str] = None) -> AIVisionAnalyzer:
 def is_ai_available() -> bool:
     """Check if AI analysis capabilities are available"""
     return GEMINI_AVAILABLE
+
+# Export for backward compatibility
+AI_VISION_AVAILABLE = GEMINI_AVAILABLE
