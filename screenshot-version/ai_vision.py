@@ -37,9 +37,10 @@ class AIVisionAnalyzer:
             
         try:
             genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-2.5-flash')
+            # Use gemini-1.5-flash: 1500 requests/day (free tier) vs gemini-2.5-flash: 20 requests/day
+            self.model = genai.GenerativeModel('gemini-1.5-flash')
             self.enabled = True
-            logger.info("✅ Google Gemini AI vision initialized")
+            logger.info("✅ Google Gemini AI vision initialized (gemini-1.5-flash)")
         except Exception as e:
             logger.error(f"Failed to initialize Gemini: {e}")
     
