@@ -11,11 +11,12 @@ from PIL import Image
 import io
 
 try:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False
-    logging.warning("google-generativeai not installed. AI analysis will be disabled.")
+    logging.warning("google-genai not installed. AI analysis will be disabled.")
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +25,12 @@ class AIVisionAnalyzer:
     
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key
-        self.model = None
+        self.client = None
+        self.model_name = "gemma-3-12b-it"  # Gemma 3 12B with instruction tuning
         self.enabled = False
         
         if not GEMINI_AVAILABLE:
-            logger.warning("Gemini AI not available - install google-generativeai")
+            logger.warning("Gemini AI not available - install google-genai")
             return
             
         if not api_key:
@@ -36,11 +38,9 @@ class AIVisionAnalyzer:
             return
             
         try:
-            genai.configure(api_key=api_key)
-            # Use gemini-1.5-flash: 1500 requests/day (free tier) vs gemini-2.5-flash: 20 requests/day
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            self.client = genai.Client(api_key=api_key)
             self.enabled = True
-            logger.info("✅ Google Gemini AI vision initialized (gemini-1.5-flash)")
+            logger.info(f"✅ Google Gemini AI vision initialized ({self.model_name})")
         except Exception as e:
             logger.error(f"Failed to initialize Gemini: {e}")
     
@@ -69,9 +69,11 @@ class AIVisionAnalyzer:
             }
         
         try:
-            # Convert bytes to PIL Images
+            # Convert bytes to PIL Images for size info (not sent to API)
             before_pil = Image.open(io.BytesIO(before_image))
             after_pil = Image.open(io.BytesIO(after_image))
+            
+            logger.info(f"Comparing {company} screenshots: {before_pil.size} vs {after_pil.size}")
             
             # Prepare the prompt for job listing analysis
             prompt = f"""
@@ -108,14 +110,15 @@ class AIVisionAnalyzer:
             Be conservative - only report changes if you're confident they relate to actual job opportunities.
             """
             
-            # Analyze with Gemini
-            response = self.model.generate_content([
-                prompt,
-                "BEFORE screenshot:",
-                before_pil,
-                "AFTER screenshot:", 
-                after_pil
-            ])
+            # Analyze with Gemma 3 via Gemini API
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=[
+                    types.Part.from_bytes(data=before_image, mime_type="image/png"),
+                    types.Part.from_bytes(data=after_image, mime_type="image/png"),
+                    prompt
+                ]
+            )
             
             # Parse the response
             analysis_text = response.text.strip()
@@ -202,8 +205,7 @@ class AIVisionAnalyzer:
             }
         
         try:
-            image = Image.open(io.BytesIO(image_bytes))
-            
+            # Prepare prompt
             action = "baseline established" if is_baseline else "monitoring"
             
             prompt = f"""
@@ -221,7 +223,14 @@ class AIVisionAnalyzer:
             Focus on counting visible job listings and identifying job types/categories.
             """
             
-            response = self.model.generate_content([prompt, image])
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=[
+                    types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
+                    prompt
+                ]
+            )
+            
             analysis_text = response.text.strip()
             
             # Parse response

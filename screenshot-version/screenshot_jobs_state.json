@@ -1,20 +1,17 @@
 {
-  "last_check": "2025-12-25T22:27:10.451496",
+  "last_check": "2025-12-25T23:16:04.787005",
   "detection_method": "screenshot_export",
   "change_threshold": 0.5,
   "output_directory": "screenshots_export",
   "companies": {
     "Intel": {
       "changed": false,
-      "first_run": false,
+      "first_run": true,
       "url": "https://intel.wd1.myworkdayjobs.com/en-US/External?q=student&locations=1e4a4eb3adf1013563ba9174bf817fcd",
       "error": false,
-      "change_percentage": 0.0,
-      "threshold": 0.5,
-      "reason": "0.000% pixels changed (threshold: 0.5%)",
+      "reason": "First run - baseline established",
       "company": "Intel",
-      "current_screenshot": "screenshots_export/intel_current_20251225_222705.png",
-      "previous_screenshot": "screenshots_export/intel_previous_20251225_222705.png"
+      "screenshot_file": "screenshots_export/intel_current_20251225_231559.png"
     },
     "NVIDIA": {
       "changed": false,
@@ -25,34 +22,30 @@
       "threshold": 0.5,
       "reason": "0.000% pixels changed (threshold: 0.5%)",
       "company": "NVIDIA",
-      "current_screenshot": "screenshots_export/nvidia_current_20251225_222705.png",
-      "previous_screenshot": "screenshots_export/nvidia_previous_20251225_222705.png"
+      "current_screenshot": "screenshots_export/nvidia_current_20251225_231559.png",
+      "previous_screenshot": "screenshots_export/nvidia_previous_20251225_231559.png"
     },
     "Microsoft": {
-      "changed": true,
-      "first_run": false,
-      "url": "https://apply.careers.microsoft.com/careers?start=0&location=Israel&sort_by=distance&filter_include_remote=1&filter_employment_type=internship",
-      "error": false,
-      "change_percentage": 99.83,
-      "threshold": 0.5,
-      "reason": "99.830% pixels changed (threshold: 0.5%)",
-      "company": "Microsoft",
-      "current_screenshot": "screenshots_export/microsoft_current_20251225_222708.png",
-      "previous_screenshot": "screenshots_export/microsoft_previous_20251225_222708.png",
-      "diff_image": "screenshots_export/microsoft_diff_20251225_222708.png"
-    },
-    "IBM": {
       "changed": false,
       "first_run": false,
-      "url": "https://ibmglobal.avature.net/en_US/careers/OpenJobs/student?10296=%5B103861%5D&10296_format=7813&listFilterMode=1&jobRecordsPerPage=9&",
+      "url": "https://apply.careers.microsoft.com/careers?start=0&location=Israel&sort_by=distance&filter_include_remote=1&filter_employment_type=internship",
       "error": false,
       "change_percentage": 0.0,
       "threshold": 0.5,
       "reason": "0.000% pixels changed (threshold: 0.5%)",
+      "company": "Microsoft",
+      "current_screenshot": "screenshots_export/microsoft_current_20251225_231603.png",
+      "previous_screenshot": "screenshots_export/microsoft_previous_20251225_231603.png"
+    },
+    "IBM": {
+      "changed": false,
+      "first_run": true,
+      "url": "https://ibmglobal.avature.net/en_US/careers/OpenJobs/student?10296=%5B103861%5D&10296_format=7813&listFilterMode=1&jobRecordsPerPage=9&",
+      "error": false,
+      "reason": "First run - baseline established",
       "company": "IBM",
-      "current_screenshot": "screenshots_export/ibm_current_20251225_222710.png",
-      "previous_screenshot": "screenshots_export/ibm_previous_20251225_222710.png"
+      "screenshot_file": "screenshots_export/ibm_current_20251225_231604.png"
     }
   },
-  "total_checks": 14
+  "total_checks": 15
 }
