@@ -105,7 +105,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip --quiet
         # Check if packages are already installed to skip if cached
-        if pip list | grep -E "(selenium|google-generativeai|Pillow|requests)" > /dev/null; then
+        if pip list | grep -E "(selenium|google-genai|Pillow|requests)" > /dev/null; then
           echo "✅ Python packages already installed"
         else
           echo "📦 Installing Python packages..."
