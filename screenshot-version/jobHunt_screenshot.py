@@ -365,30 +365,31 @@ def take_screenshot(url: str, company_name: str, company_config: dict) -> Option
         # Dismiss cookie banners before taking screenshot
         dismiss_cookie_banners(driver)
         
-        # Try to find and focus on job listings container
-        job_container = find_job_container(driver, company_config["selectors"])
+        # Take full-page screenshot using Chrome DevTools Protocol
+        logger.info(f"📄 Taking full-page screenshot for {company_name}")
         
-        if job_container:
-            logger.info(f"✅ Found job container for {company_name}")
-            # Scroll to job container
-            driver.execute_script("arguments[0].scrollIntoView(true);", job_container)
-            time.sleep(2)
-            
-            # Take screenshot of the specific container
-            screenshot_png = job_container.screenshot_as_png
-            screenshot_method = "container"
-        else:
-            logger.info(f"📄 Using full page screenshot for {company_name}")
-            # Take full page screenshot
-            screenshot_png = driver.get_screenshot_as_png()
-            screenshot_method = "fullpage"
+        # Get page dimensions
+        page_height = driver.execute_script("return document.body.scrollHeight")
+        page_width = driver.execute_script("return document.body.scrollWidth")
+        
+        # Set window size to capture full page
+        original_size = driver.get_window_size()
+        driver.set_window_size(page_width, page_height)
+        time.sleep(1)  # Allow page to adjust
+        
+        # Take screenshot
+        screenshot_png = driver.get_screenshot_as_png()
+        screenshot_method = "full-page"
+        
+        # Restore original window size
+        driver.set_window_size(original_size['width'], original_size['height'])
         
         # Convert to base64 for storage
         screenshot_b64 = base64.b64encode(screenshot_png).decode('utf-8')
         
         # Calculate size info
         size_kb = len(screenshot_png) / 1024
-        logger.info(f"📸 Screenshot captured for {company_name}: {size_kb:.1f}KB ({screenshot_method})")
+        logger.info(f"📸 Screenshot captured for {company_name}: {size_kb:.1f}KB ({screenshot_method}, {page_width}x{page_height}px)")
         
         return screenshot_b64
         
