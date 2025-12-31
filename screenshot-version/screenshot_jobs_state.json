@@ -1,29 +1,21 @@
 {
-  "last_check": "2025-12-25T23:16:04.787005",
+  "last_check": "2025-12-31T22:19:13.152489",
   "detection_method": "screenshot_export",
   "change_threshold": 0.5,
   "output_directory": "screenshots_export",
   "companies": {
     "Intel": {
-      "changed": false,
-      "first_run": true,
+      "changed": true,
+      "first_run": false,
       "url": "https://intel.wd1.myworkdayjobs.com/en-US/External?q=student&locations=1e4a4eb3adf1013563ba9174bf817fcd",
       "error": false,
-      "reason": "First run - baseline established",
-      "company": "Intel",
-      "screenshot_file": "screenshots_export/intel_current_20251225_231559.png"
-    },
-    "NVIDIA": {
-      "changed": false,
-      "first_run": false,
-      "url": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite?q=Student&locationHierarchy1=2fcb99c455831013ea52bbe14cf9326c",
-      "error": false,
-      "change_percentage": 0.0,
+      "change_percentage": 13.473,
       "threshold": 0.5,
-      "reason": "0.000% pixels changed (threshold: 0.5%)",
-      "company": "NVIDIA",
-      "current_screenshot": "screenshots_export/nvidia_current_20251225_231559.png",
-      "previous_screenshot": "screenshots_export/nvidia_previous_20251225_231559.png"
+      "reason": "13.473% pixels changed (threshold: 0.5%)",
+      "company": "Intel",
+      "current_screenshot": "screenshots_export/intel_current_20251231_221908.png",
+      "previous_screenshot": "screenshots_export/intel_previous_20251231_221908.png",
+      "diff_image": "screenshots_export/intel_diff_20251231_221909.png"
     },
     "Microsoft": {
       "changed": false,
@@ -34,18 +26,34 @@
       "threshold": 0.5,
       "reason": "0.000% pixels changed (threshold: 0.5%)",
       "company": "Microsoft",
-      "current_screenshot": "screenshots_export/microsoft_current_20251225_231603.png",
-      "previous_screenshot": "screenshots_export/microsoft_previous_20251225_231603.png"
+      "current_screenshot": "screenshots_export/microsoft_current_20251231_221911.png",
+      "previous_screenshot": "screenshots_export/microsoft_previous_20251231_221912.png"
     },
     "IBM": {
-      "changed": false,
-      "first_run": true,
+      "changed": true,
+      "first_run": false,
       "url": "https://ibmglobal.avature.net/en_US/careers/OpenJobs/student?10296=%5B103861%5D&10296_format=7813&listFilterMode=1&jobRecordsPerPage=9&",
       "error": false,
-      "reason": "First run - baseline established",
+      "change_percentage": 8.936,
+      "threshold": 0.5,
+      "reason": "8.936% pixels changed (threshold: 0.5%)",
       "company": "IBM",
-      "screenshot_file": "screenshots_export/ibm_current_20251225_231604.png"
+      "current_screenshot": "screenshots_export/ibm_current_20251231_221912.png",
+      "previous_screenshot": "screenshots_export/ibm_previous_20251231_221912.png",
+      "diff_image": "screenshots_export/ibm_diff_20251231_221912.png"
+    },
+    "NVIDIA": {
+      "changed": false,
+      "first_run": false,
+      "url": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite?q=Student&locationHierarchy1=2fcb99c455831013ea52bbe14cf9326c",
+      "error": false,
+      "change_percentage": 0.023,
+      "threshold": 0.5,
+      "reason": "0.023% pixels changed (threshold: 0.5%)",
+      "company": "NVIDIA",
+      "current_screenshot": "screenshots_export/nvidia_current_20251231_221912.png",
+      "previous_screenshot": "screenshots_export/nvidia_previous_20251231_221912.png"
     }
   },
-  "total_checks": 15
+  "total_checks": 24
 }

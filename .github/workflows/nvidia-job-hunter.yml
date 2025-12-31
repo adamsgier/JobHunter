@@ -1,4 +1,4 @@
-name: AI-Enhanced Screenshot Job Hunter (NVIDIA & Intel)
+name: AI-Enhanced Screenshot Job Hunter
 
 on:
   schedule:
