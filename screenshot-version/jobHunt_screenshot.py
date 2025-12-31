@@ -462,20 +462,24 @@ def compare_screenshots(screenshot1_b64: str, screenshot2_b64: str, company_name
             "reason": f"{change_percentage:.3f}% pixels changed (threshold: {CHANGE_THRESHOLD}%)"
         }
         
-        # Add AI analysis if available
+        # Always run AI analysis if available (primary decision maker)
         ai_result = None
-        if ai_analyzer and ai_analyzer.is_enabled() and is_changed:
+        if ai_analyzer and ai_analyzer.is_enabled():
             logger.info(f"🤖 Running AI analysis for {company_name}...")
             ai_result = ai_analyzer.analyze_screenshots(img1_data, img2_data, company_name)
             
-            # Override pixel-based decision with AI analysis if confident enough
-            if ai_result.get("confidence", 0) > 0.7:
+            # AI analysis is the primary decision maker, pixel comparison is just context
+            if ai_result.get("confidence", 0) > 0.5:
                 ai_has_changes = ai_result.get("has_changes", False)
-                if ai_has_changes != is_changed:
-                    logger.info(f"🤖 AI override for {company_name}: pixel={is_changed} -> AI={ai_has_changes}")
-                    result["changed"] = ai_has_changes
-                    result["ai_override"] = True
-                    result["reason"] = f"AI analysis: {ai_result.get('description', 'Unknown')}"
+                logger.info(f"🤖 AI decision for {company_name}: pixel_change={change_percentage:.2f}%, AI_says_changed={ai_has_changes}")
+                result["changed"] = ai_has_changes
+                result["ai_primary"] = True
+                result["reason"] = f"AI analysis: {ai_result.get('description', 'Unknown')}"
+            else:
+                # Low confidence AI result, fall back to pixel comparison
+                logger.warning(f"🤖 Low confidence AI result for {company_name}, using pixel comparison")
+                result["changed"] = is_changed
+                result["reason"] = f"AI low confidence, pixel fallback: {change_percentage:.3f}% changed"
         
         # Add AI analysis to result
         if ai_result:

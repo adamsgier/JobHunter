@@ -77,37 +77,52 @@ class AIVisionAnalyzer:
             
             # Prepare the prompt for job listing analysis
             prompt = f"""
-            You are analyzing screenshots of {company}'s job listing page to detect meaningful changes.
+            You are analyzing screenshots of {company}'s job listing page to detect meaningful changes in JOB CONTENT ONLY.
             
             I'm providing you with TWO screenshots:
             1. BEFORE: Previous screenshot of the job page
             2. AFTER: Current screenshot of the job page
             
-            Please analyze these images and determine:
+            **CRITICAL**: The images may have DIFFERENT RESOLUTIONS or heights. This is NORMAL and NOT a change.
+            Focus ONLY on the actual job listing content, not the page dimensions.
             
-            1. **ARE THERE MEANINGFUL CHANGES?** Focus on:
-               - New job postings added
-               - Job postings removed
-               - Changes in job titles, descriptions, or requirements
-               - Application deadlines changed
-               - New locations or departments
-               
-            2. **IGNORE MINOR CHANGES** like:
-               - Page loading animations
-               - Timestamps or "time ago" indicators
-               - Session IDs or tracking elements
-               - Small layout shifts
-               - Cookie banners or pop-ups
-               
-            3. **PROVIDE ANALYSIS** in this exact JSON format:
+            **MEANINGFUL CHANGES** to report (ONLY these matter):
+            ✅ New job posting titles that didn't exist before
+            ✅ Job postings that were completely removed
+            ✅ Different job titles in the same position
+            ✅ Different job locations or departments (if they indicate new roles)
+            ✅ Significant changes in number of visible jobs (e.g., 5 jobs → 8 jobs)
+            
+            **IGNORE THESE** (NOT meaningful changes):
+            ❌ Page height/resolution differences (images can be different sizes!)
+            ❌ Vertical spacing or layout shifts
+            ❌ "Posted X days ago" or timestamp changes
+            ❌ "Showing X-Y of Z results" pagination text
+            ❌ Cookie banners, pop-ups, or notices
+            ❌ Scrollbar presence/absence
+            ❌ Loading animations or skeleton screens
+            ❌ Session IDs, tracking pixels, or dynamic IDs
+            ❌ Same jobs in slightly different visual positions
+            ❌ Font rendering or anti-aliasing differences
+            ❌ Background colors or subtle styling changes
+            ❌ Jobs that appear "cut off" at bottom due to page height differences
+            
+            **ANALYSIS APPROACH**:
+            1. Read the job titles visible in BEFORE image
+            2. Read the job titles visible in AFTER image  
+            3. Compare the actual job titles - are they the same jobs?
+            4. Ignore everything else (layout, spacing, page size, etc.)
+            
+            **RESPOND** in this exact JSON format:
             {{
                 "has_changes": true/false,
-                "description": "Brief description of what changed or 'No meaningful changes detected'",
+                "description": "Brief description of what changed or 'No meaningful job changes detected'",
                 "confidence": 0.0-1.0,
-                "details": ["list", "of", "specific", "changes"]
+                "details": ["specific job title that was added/removed", "another specific change"]
             }}
             
-            Be conservative - only report changes if you're confident they relate to actual job opportunities.
+            Be VERY conservative - only report has_changes=true if you see ACTUAL DIFFERENT JOB TITLES.
+            If the same jobs appear with slightly different layout/spacing, that's has_changes=false.
             """
             
             # Analyze with Gemma 3 via Gemini API
