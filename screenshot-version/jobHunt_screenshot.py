@@ -168,183 +168,185 @@ def wait_for_page_load(driver, timeout=20):
         logger.warning(f"Page load wait failed: {e}")
         return False
 
-def dismiss_cookie_banners(driver):
-    """Attempt to dismiss cookie consent banners"""
-    # Try multiple strategies to dismiss cookie banners
-    
-    # Strategy 1: Click buttons by text content (most reliable)
-    click_by_text_script = """
-        const buttonTexts = [
-            'Accept Cookies',
-            'Accept required',
-            'Accept all',
-            'Accept All',
-            'I accept',
-            'I Accept',
-            'Accept',
-            'Got it',
-            'OK',
-            'I agree',
-            'Agree'
-        ];
-        
-        let clicked = false;
-        
-        // Try to find and click buttons with matching text
-        buttonTexts.forEach(text => {
-            if (clicked) return;
-            
-            const buttons = Array.from(document.querySelectorAll('button, a'));
-            for (let button of buttons) {
-                if (button.textContent.trim() === text || 
-                    button.textContent.includes(text)) {
-                    try {
-                        button.click();
-                        console.log('Clicked button with text: ' + text);
-                        clicked = true;
-                        return true;
-                    } catch(e) {}
-                }
-            }
-        });
-        
-        return clicked;
-    """
-    
-    try:
-        # Strategy 1: Click by text content using JavaScript
-        clicked = driver.execute_script(click_by_text_script)
-        if clicked:
-            logger.info("🍪 Clicked cookie consent button using text matching")
-            time.sleep(2)
-            return True
-    except Exception as e:
-        logger.debug(f"Text-based cookie dismissal failed: {e}")
-    
-    # Strategy 2: Try XPath for text-based matching
-    xpath_selectors = [
-        "//button[contains(text(), 'Accept Cookies')]",
-        "//button[contains(text(), 'Accept required')]",
-        "//button[contains(text(), 'Accept all')]",
-        "//button[contains(text(), 'Accept')]",
-        "//button[contains(text(), 'I accept')]",
-        "//button[contains(text(), 'Got it')]",
-        "//a[contains(text(), 'Accept')]"
-    ]
-    
-    try:
-        for xpath in xpath_selectors:
-            try:
-                buttons = driver.find_elements(By.XPATH, xpath)
-                for button in buttons:
-                    if button.is_displayed():
-                        button.click()
-                        logger.info(f"🍪 Clicked cookie button via XPath")
-                        time.sleep(2)
-                        return True
-            except:
-                continue
-    except Exception as e:
-        logger.debug(f"XPath cookie dismissal failed: {e}")
-    
-    # Strategy 3: Try CSS selectors
-    cookie_selectors = [
-        # Intel and IBM specific
-        'button[class*="accept"]',
-        # Generic cookie buttons
-        'button[id*="accept"]',
-        'button[id*="cookie"]',
-        'button[class*="cookie"]',
-        'button[id*="consent"]',
-        'a[id*="accept"]',
-        'a[class*="accept"]',
-        # IBM Avature specific
-        '[class*="truste"] button',
-        '#truste-consent-button',
-        '.truste-button',
-        # Common GDPR/cookie consent frameworks
-        '[aria-label*="Accept"]',
-        '[aria-label*="consent"]',
-        '[aria-label*="cookie"]',
-        # OneTrust
-        '#onetrust-accept-btn-handler',
-        '.onetrust-close-btn-handler',
-        # Cookiebot
-        '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
-        '.CybotCookiebotDialogBodyButton',
-        # Other common frameworks
-        '[data-testid*="cookie"]',
-        '[data-testid*="accept"]',
-        '[data-qa*="cookie"]',
-        '[data-qa*="accept"]'
-    ]
-    
-    try:
-        for selector in cookie_selectors:
-            try:
-                buttons = driver.find_elements(By.CSS_SELECTOR, selector)
-                for button in buttons:
-                    if button.is_displayed():
-                        button.click()
-                        logger.info(f"🍪 Clicked cookie consent button: {selector}")
-                        time.sleep(2)
-                        return True
-            except:
-                continue
-    except Exception as e:
-        logger.debug(f"CSS selector cookie dismissal failed: {e}")
-    
-    # Strategy 4: Hide cookie banners with JavaScript if clicking didn't work
-    hide_script = """
-        const hideSelectors = [
-            '[id*="cookie"]',
-            '[class*="cookie"]',
-            '[id*="consent"]',
-            '[class*="consent"]',
-            '[class*="truste"]',
-            '[id*="truste"]',
-            '.notice-banner',
-            '.cookie-notice',
-            '.cookie-banner',
-            '#onetrust-banner-sdk',
-            '#cookiebanner',
-            '[role="dialog"]',
-            '.modal'
-        ];
-        
-        hideSelectors.forEach(selector => {
-            try {
-                document.querySelectorAll(selector).forEach(el => {
-                    const text = el.textContent.toLowerCase();
-                    if (text.includes('cookie') || text.includes('consent')) {
-                        el.style.display = 'none';
-                        el.style.visibility = 'hidden';
-                        el.remove();
-                    }
-                });
-            } catch(e) {}
-        });
-    """
-    
-    try:
-        driver.execute_script(hide_script)
-        logger.info("🍪 Attempted to hide cookie banners with JavaScript")
-        time.sleep(1)
-    except Exception as e:
-        logger.debug(f"JavaScript hide failed: {e}")
-    
-    return False
+# COMMENTED OUT: AI handles cookies automatically, no need to dismiss them
+# def dismiss_cookie_banners(driver):
+#     """Attempt to dismiss cookie consent banners"""
+#     # Try multiple strategies to dismiss cookie banners
+#     
+#     # Strategy 1: Click buttons by text content (most reliable)
+#     click_by_text_script = """
+#         const buttonTexts = [
+#             'Accept Cookies',
+#             'Accept required',
+#             'Accept all',
+#             'Accept All',
+#             'I accept',
+#             'I Accept',
+#             'Accept',
+#             'Got it',
+#             'OK',
+#             'I agree',
+#             'Agree'
+#         ];
+#         
+#         let clicked = false;
+#         
+#         // Try to find and click buttons with matching text
+#         buttonTexts.forEach(text => {
+#             if (clicked) return;
+#             
+#             const buttons = Array.from(document.querySelectorAll('button, a'));
+#             for (let button of buttons) {
+#                 if (button.textContent.trim() === text || 
+#                     button.textContent.includes(text)) {
+#                     try {
+#                         button.click();
+#                         console.log('Clicked button with text: ' + text);
+#                         clicked = true;
+#                         return true;
+#                     } catch(e) {}
+#                 }
+#             }
+#         });
+#         
+#         return clicked;
+#     """
+#     
+#     try:
+#         # Strategy 1: Click by text content using JavaScript
+#         clicked = driver.execute_script(click_by_text_script)
+#         if clicked:
+#             logger.info("🍪 Clicked cookie consent button using text matching")
+#             time.sleep(2)
+#             return True
+#     except Exception as e:
+#         logger.debug(f"Text-based cookie dismissal failed: {e}")
+#     
+#     # Strategy 2: Try XPath for text-based matching
+#     xpath_selectors = [
+#         "//button[contains(text(), 'Accept Cookies')]",
+#         "//button[contains(text(), 'Accept required')]",
+#         "//button[contains(text(), 'Accept all')]",
+#         "//button[contains(text(), 'Accept')]",
+#         "//button[contains(text(), 'I accept')]",
+#         "//button[contains(text(), 'Got it')]",
+#         "//a[contains(text(), 'Accept')]"
+#     ]
+#     
+#     try:
+#         for xpath in xpath_selectors:
+#             try:
+#                 buttons = driver.find_elements(By.XPATH, xpath)
+#                 for button in buttons:
+#                     if button.is_displayed():
+#                         button.click()
+#                         logger.info(f"🍪 Clicked cookie button via XPath")
+#                         time.sleep(2)
+#                         return True
+#             except:
+#                 continue
+#     except Exception as e:
+#         logger.debug(f"XPath cookie dismissal failed: {e}")
+#     
+#     # Strategy 3: Try CSS selectors
+#     cookie_selectors = [
+#         # Intel and IBM specific
+#         'button[class*="accept"]',
+#         # Generic cookie buttons
+#         'button[id*="accept"]',
+#         'button[id*="cookie"]',
+#         'button[class*="cookie"]',
+#         'button[id*="consent"]',
+#         'a[id*="accept"]',
+#         'a[class*="accept"]',
+#         # IBM Avature specific
+#         '[class*="truste"] button',
+#         '#truste-consent-button',
+#         '.truste-button',
+#         # Common GDPR/cookie consent frameworks
+#         '[aria-label*="Accept"]',
+#         '[aria-label*="consent"]',
+#         '[aria-label*="cookie"]',
+#         # OneTrust
+#         '#onetrust-accept-btn-handler',
+#         '.onetrust-close-btn-handler',
+#         # Cookiebot
+#         '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
+#         '.CybotCookiebotDialogBodyButton',
+#         # Other common frameworks
+#         '[data-testid*="cookie"]',
+#         '[data-testid*="accept"]',
+#         '[data-qa*="cookie"]',
+#         '[data-qa*="accept"]'
+#     ]
+#     
+#     try:
+#         for selector in cookie_selectors:
+#             try:
+#                 buttons = driver.find_elements(By.CSS_SELECTOR, selector)
+#                 for button in buttons:
+#                     if button.is_displayed():
+#                         button.click()
+#                         logger.info(f"🍪 Clicked cookie consent button: {selector}")
+#                         time.sleep(2)
+#                         return True
+#             except:
+#                 continue
+#     except Exception as e:
+#         logger.debug(f"CSS selector cookie dismissal failed: {e}")
+#     
+#     # Strategy 4: Hide cookie banners with JavaScript if clicking didn't work
+#     hide_script = """
+#         const hideSelectors = [
+#             '[id*="cookie"]',
+#             '[class*="cookie"]',
+#             '[id*="consent"]',
+#             '[class*="consent"]',
+#             '[class*="truste"]',
+#             '[id*="truste"]',
+#             '.notice-banner',
+#             '.cookie-notice',
+#             '.cookie-banner',
+#             '#onetrust-banner-sdk',
+#             '#cookiebanner',
+#             '[role="dialog"]',
+#             '.modal'
+#         ];
+#         
+#         hideSelectors.forEach(selector => {
+#             try {
+#                 document.querySelectorAll(selector).forEach(el => {
+#                     const text = el.textContent.toLowerCase();
+#                     if (text.includes('cookie') || text.includes('consent')) {
+#                         el.style.display = 'none';
+#                         el.style.visibility = 'hidden';
+#                         el.remove();
+#                     }
+#                 });
+#             } catch(e) {}
+#         });
+#     """
+#     
+#     try:
+#         driver.execute_script(hide_script)
+#         logger.info("🍪 Attempted to hide cookie banners with JavaScript")
+#         time.sleep(1)
+#     except Exception as e:
+#         logger.debug(f"JavaScript hide failed: {e}")
+#     
+#     return False
 
-def find_job_container(driver, selectors):
-    """Find the main job listings container"""
-    for selector in selectors:
-        try:
-            container = driver.find_element(By.CSS_SELECTOR, selector)
-            if container and container.is_displayed():
-                return container
-        except:
-            continue
-    return None
+# COMMENTED OUT: Unused function, we take full-page screenshots that AI analyzes
+# def find_job_container(driver, selectors):
+#     """Find the main job listings container"""
+#     for selector in selectors:
+#         try:
+#             container = driver.find_element(By.CSS_SELECTOR, selector)
+#             if container and container.is_displayed():
+#                 return container
+#         except:
+#             continue
+#     return None
 
 def take_screenshot(url: str, company_name: str, company_config: dict) -> Optional[str]:
     """Take a screenshot of the job page and return base64 encoded image"""
@@ -362,8 +364,8 @@ def take_screenshot(url: str, company_name: str, company_config: dict) -> Option
         if not wait_for_page_load(driver):
             logger.warning(f"Page load timeout for {company_name}, proceeding anyway")
         
-        # Dismiss cookie banners before taking screenshot
-        dismiss_cookie_banners(driver)
+        # COMMENTED OUT: AI handles cookies automatically in screenshots
+        # dismiss_cookie_banners(driver)
         
         # Take full-page screenshot using Chrome DevTools Protocol
         logger.info(f"📄 Taking full-page screenshot for {company_name}")
