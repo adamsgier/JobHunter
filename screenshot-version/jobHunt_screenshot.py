@@ -441,59 +441,81 @@ def compare_screenshots(screenshot1_b64: str, screenshot2_b64: str, company_name
         if img1.mode != img2.mode:
             img2 = img2.convert(img1.mode)
         
-        # Calculate pixel difference (FOR REFERENCE ONLY - not used for decision making)
+        # STAGE 1: Fast pixel comparison as pre-filter
         diff = ImageChops.difference(img1, img2)
         
         # Convert difference to grayscale for analysis
         diff_gray = diff.convert('L')
         histogram = diff_gray.histogram()
         
-        # Calculate change statistics (for logging/debugging only)
+        # Calculate change statistics
         total_pixels = sum(histogram)
         changed_pixels = sum(histogram[1:])  # All non-zero values (pixels that changed)
         change_percentage = (changed_pixels / total_pixels) * 100 if total_pixels > 0 else 0
         
-        # Calculate additional metrics (for logging only)
+        # Calculate additional metrics
         max_diff = max(histogram[1:]) if changed_pixels > 0 else 0
         avg_change = sum(i * histogram[i] for i in range(1, 256)) / changed_pixels if changed_pixels > 0 else 0
         
-        # Store pixel comparison metrics (for reference, not decision making)
+        # Store pixel comparison metrics
         result = {
-            "changed": False,  # Will be overridden by AI
+            "changed": False,
             "change_percentage": round(change_percentage, 3),
             "threshold": CHANGE_THRESHOLD,
             "total_pixels": total_pixels,
             "changed_pixels": changed_pixels,
             "max_diff_intensity": max_diff,
             "avg_change_intensity": round(avg_change, 2),
-            "reason": f"Pixel comparison: {change_percentage:.3f}% (reference only, AI decides)"
+            "reason": f"No pixel changes detected ({change_percentage:.3f}% < {CHANGE_THRESHOLD}%)"
         }
         
-        # Always run AI analysis if available (ONLY decision maker)
+        # Check if pixel comparison detected changes
+        pixel_changed = change_percentage > CHANGE_THRESHOLD
+        
+        if not pixel_changed:
+            # FAST PATH: No pixel changes, skip AI analysis entirely
+            logger.info(f"✅ {company_name}: No pixel changes ({change_percentage:.3f}%), skipping AI analysis")
+            result["pixel_prefilter"] = "passed"
+            result["ai_skipped"] = True
+            return result
+        
+        # STAGE 2: Pixel changes detected, run AI analysis for verification
+        logger.info(f"🔍 {company_name}: Pixel changes detected ({change_percentage:.3f}%), running AI verification...")
+        
         ai_result = None
         if ai_analyzer and ai_analyzer.is_enabled():
-            logger.info(f"🤖 Running AI analysis for {company_name}...")
             ai_result = ai_analyzer.analyze_screenshots(img1_data, img2_data, company_name)
             
-            # AI analysis is the ONLY decision maker
+            # AI analysis with confidence threshold
             ai_has_changes = ai_result.get("has_changes", False)
             ai_confidence = ai_result.get("confidence", 0)
             
-            logger.info(f"🤖 AI decision for {company_name}: pixel_change={change_percentage:.2f}%, AI_says_changed={ai_has_changes}, confidence={ai_confidence:.2f}")
-            result["changed"] = ai_has_changes
-            result["ai_primary"] = True
-            result["ai_only"] = True
-            result["reason"] = f"AI analysis (confidence {ai_confidence:.2f}): {ai_result.get('description', 'Unknown')}"
+            logger.info(f"🤖 AI verdict for {company_name}: changes={ai_has_changes}, confidence={ai_confidence:.2f}")
             
-            # Log pixel comparison for reference only
-            if change_percentage > CHANGE_THRESHOLD:
-                logger.info(f"📊 Pixel comparison detected {change_percentage:.3f}% change (for reference only)")
+            # Only report changes if AI confirms AND confidence > 70%
+            if ai_has_changes and ai_confidence > 0.7:
+                result["changed"] = True
+                result["reason"] = f"AI confirmed job changes (confidence {ai_confidence:.2f}): {ai_result.get('description', 'Unknown')}"
+                logger.info(f"🔥 {company_name}: AI confirmed meaningful job changes!")
+            else:
+                result["changed"] = False
+                if ai_confidence <= 0.7:
+                    result["reason"] = f"AI low confidence ({ai_confidence:.2f}), likely false positive (pixel: {change_percentage:.3f}%)"
+                    logger.info(f"✋ {company_name}: AI confidence too low ({ai_confidence:.2f}), ignoring pixel changes")
+                else:
+                    result["reason"] = f"AI says no job changes despite {change_percentage:.3f}% pixel difference"
+                    logger.info(f"✋ {company_name}: AI determined changes are not job-related")
+            
+            result["pixel_prefilter"] = "detected_change"
+            result["ai_verified"] = True
         else:
-            # If AI is not available, inform user instead of falling back to pixel comparison
-            logger.error(f"❌ AI analysis not available for {company_name} - cannot determine changes reliably")
+            # If AI is not available, cannot verify pixel changes
+            logger.error(f"❌ AI analysis not available for {company_name} - cannot verify pixel changes")
             result["changed"] = False
-            result["reason"] = f"AI analysis unavailable - cannot determine changes"
+            result["reason"] = f"Pixel changes detected but AI unavailable for verification"
             result["error"] = True
+            result["pixel_prefilter"] = "detected_change"
+            result["ai_verified"] = False
         
         # Add AI analysis to result
         if ai_result:
