@@ -48,7 +48,7 @@ class AIVisionAnalyzer:
         """Check if AI analysis is available"""
         return self.enabled
     
-    def analyze_screenshots(self, before_image: bytes, after_image: bytes, company: str) -> Dict[str, Any]:
+    def analyze_screenshots(self, before_image: bytes, after_image: bytes, company: str, known_jobs: list = None) -> Dict[str, Any]:
         """
         Analyze two screenshots to detect meaningful changes in job listings
         
@@ -56,6 +56,7 @@ class AIVisionAnalyzer:
             before_image: Previous screenshot as bytes
             after_image: Current screenshot as bytes  
             company: Company name for context
+            known_jobs: List of job titles that have been seen before (for tracking truly new jobs)
             
         Returns:
             Dict with analysis results including change detection and description
@@ -75,54 +76,76 @@ class AIVisionAnalyzer:
             
             logger.info(f"Comparing {company} screenshots: {before_pil.size} vs {after_pil.size}")
             
+            # Build known jobs context
+            known_jobs_context = ""
+            if known_jobs and len(known_jobs) > 0:
+                known_jobs_context = f"""
+            **HISTORICAL JOB TRACKING**:
+            We have previously seen these {len(known_jobs)} job titles for {company}:
+            {chr(10).join(f'  - {job}' for job in known_jobs[:50])}
+            {'  ... and more' if len(known_jobs) > 50 else ''}
+            
+            **CRITICAL**: A job appearing in AFTER that wasn't in BEFORE does NOT mean it's new!
+            It could be an existing job that:
+            - Was on page 2 before, now on page 1
+            - Was below the fold before, now visible due to different scroll position
+            - Was hidden by a loading state or network delay in BEFORE screenshot
+            
+            **TO REPORT AS NEW**: A job title in AFTER must be:
+            1. NOT in the BEFORE screenshot AND
+            2. NOT in the historical list of {len(known_jobs)} known job titles above
+            
+            Only then is it truly a NEW posting worth reporting.
+            """
+            
             # Prepare the prompt for job listing analysis
             prompt = f"""
-            You are analyzing screenshots of {company}'s job listing page to detect meaningful changes in JOB CONTENT ONLY.
+            You are analyzing screenshots of {company}'s job listing page to detect TRULY NEW job postings.
             
             I'm providing you with TWO screenshots:
             1. BEFORE: Previous screenshot of the job page
             2. AFTER: Current screenshot of the job page
+            {known_jobs_context}
             
-            **CRITICAL**: The images may have DIFFERENT RESOLUTIONS or heights. This is NORMAL and NOT a change.
-            Focus ONLY on the actual job listing content, not the page dimensions.
+            **CRITICAL UNDERSTANDING**: 
+            These are PARTIAL VIEWS of a larger job list. The screenshots show what's VISIBLE at that moment.
+            Jobs can appear/disappear due to scrolling, pagination, sorting, or loading - this is NOT a change!
             
-            **MEANINGFUL CHANGES** to report (ONLY these matter):
-            ✅ New job posting titles that didn't exist before
-            ✅ Job postings that were completely removed
-            ✅ Different job titles in the same position
-            ✅ Different job locations or departments (if they indicate new roles)
-            ✅ Significant changes in number of visible jobs (e.g., 5 jobs → 8 jobs)
+            **THE ONLY MEANINGFUL CHANGE** is a TRULY NEW JOB POSTING:
+            ✅ A job title in AFTER that has NEVER been seen before (not in BEFORE, not in historical list)
+            ✅ This indicates the company just posted a new position
             
             **IGNORE THESE** (NOT meaningful changes):
+            ❌ Jobs visible in AFTER but not in BEFORE (could be from pagination/scrolling)
+            ❌ Jobs in AFTER that match the historical list (old jobs appearing again)
+            ❌ Different number of visible jobs (likely pagination or scroll position change)
+            ❌ Same jobs in different order (sorting changed)
             ❌ Page height/resolution differences (images can be different sizes!)
-            ❌ Vertical spacing or layout shifts
             ❌ "Posted X days ago" or timestamp changes
             ❌ "Showing X-Y of Z results" pagination text
             ❌ Cookie banners, pop-ups, or notices
-            ❌ Scrollbar presence/absence
-            ❌ Loading animations or skeleton screens
-            ❌ Session IDs, tracking pixels, or dynamic IDs
-            ❌ Same jobs in slightly different visual positions
-            ❌ Font rendering or anti-aliasing differences
-            ❌ Background colors or subtle styling changes
+            ❌ Vertical spacing or layout shifts
             ❌ Jobs that appear "cut off" at bottom due to page height differences
             
             **ANALYSIS APPROACH**:
-            1. Read the job titles visible in BEFORE image
-            2. Read the job titles visible in AFTER image  
-            3. Compare the actual job titles - are they the same jobs?
-            4. Ignore everything else (layout, spacing, page size, etc.)
+            1. Extract ALL job titles visible in AFTER screenshot
+            2. For EACH job title in AFTER:
+               a. Is it in BEFORE? If YES → not new (skip)
+               b. Is it in historical list? If YES → not new (skip)
+               c. If NO to both → TRULY NEW job posting!
+            3. Only report has_changes=true if you found TRULY NEW jobs (step 2c)
             
             **RESPOND** in this exact JSON format:
             {{
                 "has_changes": true/false,
-                "description": "Brief description of what changed or 'No meaningful job changes detected'",
+                "description": "Brief description: 'X truly new job(s) posted' or 'No new job postings detected'",
                 "confidence": 0.0-1.0,
-                "details": ["specific job title that was added/removed", "another specific change"]
+                "details": ["ONLY list job titles that are TRULY NEW (not in BEFORE or historical list)"],
+                "visible_jobs_after": ["list of ALL job titles visible in AFTER screenshot"]
             }}
             
-            Be VERY conservative - only report has_changes=true if you see ACTUAL DIFFERENT JOB TITLES.
-            If the same jobs appear with slightly different layout/spacing, that's has_changes=false.
+            Be EXTREMELY conservative - only report has_changes=true for TRULY NEW job postings.
+            If jobs are just appearing due to pagination/scrolling, that's has_changes=false.
             """
             
             # Analyze with Gemma 3 via Gemini API
@@ -171,7 +194,8 @@ class AIVisionAnalyzer:
                     "has_changes": parsed.get("has_changes", False),
                     "description": parsed.get("description", "No description provided"),
                     "confidence": float(parsed.get("confidence", 0.5)),
-                    "details": parsed.get("details", [])
+                    "details": parsed.get("details", []),
+                    "visible_jobs_after": parsed.get("visible_jobs_after", [])
                 }
         except Exception as e:
             logger.warning(f"Failed to parse AI response as JSON: {e}")

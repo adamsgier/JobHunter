@@ -88,6 +88,7 @@ COMPANIES = {
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 JOBS_FILE = "screenshot_jobs_state.json"
+KNOWN_JOBS_FILE = "screenshot_known_jobs.json"  # Track job titles we've seen
 
 # Settings
 CHANGE_THRESHOLD = float(os.getenv("CHANGE_THRESHOLD", "0.5"))  # % of pixels that need to change (for reference only)
@@ -411,6 +412,51 @@ def take_screenshot(url: str, company_name: str, company_config: dict) -> Option
         except:
             pass
 
+def load_known_jobs() -> dict:
+    """Load the list of known job titles for all companies"""
+    try:
+        if os.path.exists(KNOWN_JOBS_FILE):
+            with open(KNOWN_JOBS_FILE, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading known jobs: {e}")
+    return {}
+
+def save_known_jobs(known_jobs: dict):
+    """Save the list of known job titles"""
+    try:
+        with open(KNOWN_JOBS_FILE, 'w') as f:
+            json.dump(known_jobs, f, indent=2)
+        logger.info(f"💾 Saved known jobs database")
+    except Exception as e:
+        logger.error(f"Error saving known jobs: {e}")
+
+def update_known_jobs(company_name: str, new_job_titles: list) -> int:
+    """Add newly discovered job titles to the known jobs list"""
+    if not new_job_titles:
+        return 0
+    
+    known_jobs = load_known_jobs()
+    
+    if company_name not in known_jobs:
+        known_jobs[company_name] = []
+    
+    # Add only truly new titles
+    existing_set = set(known_jobs[company_name])
+    added_count = 0
+    
+    for title in new_job_titles:
+        if title and title not in existing_set:
+            known_jobs[company_name].append(title)
+            existing_set.add(title)
+            added_count += 1
+    
+    if added_count > 0:
+        save_known_jobs(known_jobs)
+        logger.info(f"📝 Added {added_count} new job titles to {company_name} known jobs list")
+    
+    return added_count
+
 def compare_screenshots(screenshot1_b64: str, screenshot2_b64: str, company_name: str) -> dict:
     """Compare two screenshots and return detailed difference analysis"""
     try:
@@ -482,9 +528,19 @@ def compare_screenshots(screenshot1_b64: str, screenshot2_b64: str, company_name
         # STAGE 2: Pixel changes detected, run AI analysis for verification
         logger.info(f"🔍 {company_name}: Pixel changes detected ({change_percentage:.3f}%), running AI verification...")
         
+        # Load known jobs for this company
+        known_jobs_db = load_known_jobs()
+        known_jobs_list = known_jobs_db.get(company_name, [])
+        is_first_population = len(known_jobs_list) == 0
+        
+        if is_first_population:
+            logger.info(f"📚 {company_name}: First population - will extract and save job titles without reporting as new")
+        else:
+            logger.info(f"📚 {company_name} has {len(known_jobs_list)} known job titles in history")
+        
         ai_result = None
         if ai_analyzer and ai_analyzer.is_enabled():
-            ai_result = ai_analyzer.analyze_screenshots(img1_data, img2_data, company_name)
+            ai_result = ai_analyzer.analyze_screenshots(img1_data, img2_data, company_name, known_jobs=known_jobs_list)
             
             # AI analysis with confidence threshold
             ai_has_changes = ai_result.get("has_changes", False)
@@ -492,22 +548,34 @@ def compare_screenshots(screenshot1_b64: str, screenshot2_b64: str, company_name
             
             logger.info(f"🤖 AI verdict for {company_name}: changes={ai_has_changes}, confidence={ai_confidence:.2f}")
             
-            # Only report changes if AI confirms AND confidence > 70%
-            if ai_has_changes and ai_confidence > 0.7:
+            # Update known jobs list with visible jobs from AFTER screenshot
+            visible_jobs_after = ai_result.get("visible_jobs_after", [])
+            if visible_jobs_after:
+                newly_added = update_known_jobs(company_name, visible_jobs_after)
+                logger.info(f"📝 {company_name}: {len(visible_jobs_after)} jobs visible, {newly_added} new to database")
+            
+            # SPECIAL CASE: First population - don't report as changes, just populate database
+            if is_first_population:
+                result["changed"] = False
+                result["reason"] = f"First population: extracted {len(visible_jobs_after)} job titles to database (not reported as new)"
+                logger.info(f"📚 {company_name}: Initial database populated with {len(visible_jobs_after)} jobs")
+            # NORMAL CASE: Check for truly new jobs
+            elif ai_has_changes and ai_confidence > 0.7:
                 result["changed"] = True
-                result["reason"] = f"AI confirmed job changes (confidence {ai_confidence:.2f}): {ai_result.get('description', 'Unknown')}"
-                logger.info(f"🔥 {company_name}: AI confirmed meaningful job changes!")
+                result["reason"] = f"AI confirmed truly new jobs (confidence {ai_confidence:.2f}): {ai_result.get('description', 'Unknown')}"
+                logger.info(f"🔥 {company_name}: AI confirmed TRULY NEW job postings!")
             else:
                 result["changed"] = False
                 if ai_confidence <= 0.7:
                     result["reason"] = f"AI low confidence ({ai_confidence:.2f}), likely false positive (pixel: {change_percentage:.3f}%)"
                     logger.info(f"✋ {company_name}: AI confidence too low ({ai_confidence:.2f}), ignoring pixel changes")
                 else:
-                    result["reason"] = f"AI says no job changes despite {change_percentage:.3f}% pixel difference"
-                    logger.info(f"✋ {company_name}: AI determined changes are not job-related")
+                    result["reason"] = f"AI says no new jobs despite {change_percentage:.3f}% pixel difference (jobs reappearing from pagination/scroll)"
+                    logger.info(f"✋ {company_name}: AI determined changes are not truly new jobs")
             
             result["pixel_prefilter"] = "detected_change"
             result["ai_verified"] = True
+            result["first_population"] = is_first_population
         else:
             # If AI is not available, cannot verify pixel changes
             logger.error(f"❌ AI analysis not available for {company_name} - cannot verify pixel changes")
@@ -523,7 +591,8 @@ def compare_screenshots(screenshot1_b64: str, screenshot2_b64: str, company_name
                 "has_changes": ai_result.get("has_changes"),
                 "description": ai_result.get("description"),
                 "confidence": ai_result.get("confidence"),
-                "details": ai_result.get("details", [])
+                "details": ai_result.get("details", []),
+                "visible_jobs_count": len(ai_result.get("visible_jobs_after", []))
             }
         
         if result["changed"]:
@@ -619,12 +688,17 @@ def check_company_jobs(company_name: str, company_config: dict) -> dict:
             # First run - save baseline
             save_screenshot(current_screenshot, company_config)
             
-            # Run AI analysis on first screenshot if available
+            # Run AI analysis on first screenshot to extract job titles
             ai_baseline = None
             if ai_analyzer and ai_analyzer.is_enabled():
                 logger.info(f"🤖 Analyzing baseline screenshot for {company_name}...")
                 screenshot_bytes = base64.b64decode(current_screenshot)
                 ai_baseline = ai_analyzer.analyze_single_screenshot(screenshot_bytes, company_name, is_baseline=True)
+                
+                # Extract and save initial job titles if available
+                if ai_baseline and "description" in ai_baseline:
+                    logger.info(f"📚 Extracting initial job titles for {company_name}...")
+                    # We can't extract from single screenshot analysis, will populate on first comparison
             
             logger.info(f"📝 {company_name} first screenshot - baseline established")
             result = {

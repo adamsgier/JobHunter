@@ -147,6 +147,7 @@ jobs:
       with:
         path: |
           screenshot-version/screenshot_jobs_state.json
+          screenshot-version/screenshot_known_jobs.json
           screenshot-version/nvidia_screenshot.txt
           screenshot-version/intel_screenshot.txt
           screenshot-version/ibm_screenshot.txt
@@ -187,6 +188,7 @@ jobs:
         
         # Create empty files if they don't exist
         [ ! -f screenshot_jobs_state.json ] && echo "{}" > screenshot_jobs_state.json
+        [ ! -f screenshot_known_jobs.json ] && echo "{}" > screenshot_known_jobs.json
         [ ! -f nvidia_screenshot.txt ] && echo "" > nvidia_screenshot.txt
         [ ! -f intel_screenshot.txt ] && echo "" > intel_screenshot.txt
         [ ! -f ibm_screenshot.txt ] && echo "" > ibm_screenshot.txt
@@ -226,6 +228,7 @@ jobs:
       with:
         path: |
           screenshot-version/screenshot_jobs_state.json
+          screenshot-version/screenshot_known_jobs.json
           screenshot-version/nvidia_screenshot.txt
           screenshot-version/intel_screenshot.txt
           screenshot-version/ibm_screenshot.txt
