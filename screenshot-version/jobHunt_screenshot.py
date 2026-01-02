@@ -83,25 +83,25 @@ CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 JOBS_FILE = "screenshot_jobs_state.json"
 
 # Settings
-CHANGE_THRESHOLD = float(os.getenv("CHANGE_THRESHOLD", "0.5"))  # % of pixels that need to change
+CHANGE_THRESHOLD = float(os.getenv("CHANGE_THRESHOLD", "0.5"))  # % of pixels that need to change (for reference only)
 SAVE_DEBUG_IMAGES = os.getenv("SAVE_DEBUG_IMAGES", "false").lower() == "true"
-USE_AI_ANALYSIS = os.getenv("USE_AI_ANALYSIS", "true").lower() == "true"
+USE_AI_ANALYSIS = True  # AI analysis is REQUIRED and the ONLY decision maker
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Initialize AI analyzer
+# Initialize AI analyzer (REQUIRED)
 ai_analyzer = None
-if USE_AI_ANALYSIS and AI_VISION_AVAILABLE and GEMINI_API_KEY:
+if AI_VISION_AVAILABLE and GEMINI_API_KEY:
     ai_analyzer = create_ai_analyzer(GEMINI_API_KEY)
     if ai_analyzer.is_enabled():
-        logger.info("🤖 AI vision analysis enabled")
+        logger.info("🤖 AI vision analysis enabled - ONLY decision maker for change detection")
     else:
-        logger.warning("🤖 AI vision failed to initialize")
-elif USE_AI_ANALYSIS:
-    logger.warning("🤖 AI analysis requested but not available (missing API key or module)")
+        logger.error("❌ AI vision could not be initialized - change detection will not work reliably")
+else:
+    logger.error("❌ AI vision not available - GEMINI_API_KEY required for reliable change detection")
 
 def setup_selenium_driver():
     """Setup Selenium Chrome driver optimized for GitHub Actions"""
@@ -422,64 +422,69 @@ def compare_screenshots(screenshot1_b64: str, screenshot2_b64: str, company_name
         # Log image information
         logger.info(f"Comparing {company_name} screenshots: {img1.size} vs {img2.size}")
         
-        # Handle size differences
+        # Handle size differences - this is normal and expected
         if img1.size != img2.size:
-            logger.info(f"📐 {company_name} screenshot size changed: {img1.size} -> {img2.size}")
-            # Resize the newer image to match the older one for comparison
+            logger.info(f"📐 {company_name} screenshot size differs: {img1.size} vs {img2.size} - this is normal, AI will handle it")
+            # Resize the newer image to match the older one for pixel comparison (reference only)
             img2 = img2.resize(img1.size, Image.Resampling.LANCZOS)
         
         # Convert to same mode if different
         if img1.mode != img2.mode:
             img2 = img2.convert(img1.mode)
         
-        # Calculate pixel difference
+        # Calculate pixel difference (FOR REFERENCE ONLY - not used for decision making)
         diff = ImageChops.difference(img1, img2)
         
         # Convert difference to grayscale for analysis
         diff_gray = diff.convert('L')
         histogram = diff_gray.histogram()
         
-        # Calculate change statistics
+        # Calculate change statistics (for logging/debugging only)
         total_pixels = sum(histogram)
         changed_pixels = sum(histogram[1:])  # All non-zero values (pixels that changed)
         change_percentage = (changed_pixels / total_pixels) * 100 if total_pixels > 0 else 0
         
-        # Determine if change is significant
-        is_changed = change_percentage > CHANGE_THRESHOLD
-        
-        # Calculate additional metrics
+        # Calculate additional metrics (for logging only)
         max_diff = max(histogram[1:]) if changed_pixels > 0 else 0
         avg_change = sum(i * histogram[i] for i in range(1, 256)) / changed_pixels if changed_pixels > 0 else 0
         
+        # Store pixel comparison metrics (for reference, not decision making)
         result = {
-            "changed": is_changed,
+            "changed": False,  # Will be overridden by AI
             "change_percentage": round(change_percentage, 3),
             "threshold": CHANGE_THRESHOLD,
             "total_pixels": total_pixels,
             "changed_pixels": changed_pixels,
             "max_diff_intensity": max_diff,
             "avg_change_intensity": round(avg_change, 2),
-            "reason": f"{change_percentage:.3f}% pixels changed (threshold: {CHANGE_THRESHOLD}%)"
+            "reason": f"Pixel comparison: {change_percentage:.3f}% (reference only, AI decides)"
         }
         
-        # Always run AI analysis if available (primary decision maker)
+        # Always run AI analysis if available (ONLY decision maker)
         ai_result = None
         if ai_analyzer and ai_analyzer.is_enabled():
             logger.info(f"🤖 Running AI analysis for {company_name}...")
             ai_result = ai_analyzer.analyze_screenshots(img1_data, img2_data, company_name)
             
-            # AI analysis is the primary decision maker, pixel comparison is just context
-            if ai_result.get("confidence", 0) > 0.5:
-                ai_has_changes = ai_result.get("has_changes", False)
-                logger.info(f"🤖 AI decision for {company_name}: pixel_change={change_percentage:.2f}%, AI_says_changed={ai_has_changes}")
-                result["changed"] = ai_has_changes
-                result["ai_primary"] = True
-                result["reason"] = f"AI analysis: {ai_result.get('description', 'Unknown')}"
-            else:
-                # Low confidence AI result, fall back to pixel comparison
-                logger.warning(f"🤖 Low confidence AI result for {company_name}, using pixel comparison")
-                result["changed"] = is_changed
-                result["reason"] = f"AI low confidence, pixel fallback: {change_percentage:.3f}% changed"
+            # AI analysis is the ONLY decision maker
+            ai_has_changes = ai_result.get("has_changes", False)
+            ai_confidence = ai_result.get("confidence", 0)
+            
+            logger.info(f"🤖 AI decision for {company_name}: pixel_change={change_percentage:.2f}%, AI_says_changed={ai_has_changes}, confidence={ai_confidence:.2f}")
+            result["changed"] = ai_has_changes
+            result["ai_primary"] = True
+            result["ai_only"] = True
+            result["reason"] = f"AI analysis (confidence {ai_confidence:.2f}): {ai_result.get('description', 'Unknown')}"
+            
+            # Log pixel comparison for reference only
+            if change_percentage > CHANGE_THRESHOLD:
+                logger.info(f"📊 Pixel comparison detected {change_percentage:.3f}% change (for reference only)")
+        else:
+            # If AI is not available, inform user instead of falling back to pixel comparison
+            logger.error(f"❌ AI analysis not available for {company_name} - cannot determine changes reliably")
+            result["changed"] = False
+            result["reason"] = f"AI analysis unavailable - cannot determine changes"
+            result["error"] = True
         
         # Add AI analysis to result
         if ai_result:

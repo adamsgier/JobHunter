@@ -1,18 +1,35 @@
 # Screenshot-Based Job Hunter
 
-This version uses visual screenshot comparison to detect changes in job listings, making it more reliable than text-based hash comparison.
+This version uses AI vision analysis to detect meaningful changes in job listings, making it highly reliable and intelligent.
 
 ## Features
 
-- 📸 **Visual Detection**: Takes screenshots and compares them pixel by pixel
-- 🤖 **AI-Enhanced Analysis**: Google Gemini Flash provides intelligent change analysis (optional)
-- 🎯 **Smart Targeting**: Focuses on job listing areas when possible
-- 🔍 **Hybrid Detection**: Combines pixel comparison with AI understanding
-- 📊 **Adjustable Sensitivity**: Configurable change threshold
+- 📸 **Visual Detection**: Takes full-page screenshots of job listing pages
+- 🤖 **AI-Only Analysis**: Google Gemini Flash is the ONLY decision maker for change detection
+- 🎯 **Smart Content Focus**: AI understands job content vs. layout/styling changes
+- 🔍 **Resolution Independent**: Handles different page sizes and layouts automatically
+- 📊 **Reference Metrics**: Pixel comparison metrics available for debugging (not used for decisions)
 - 🐛 **Debug Support**: Can save difference images for analysis
-- 🚀 **Multi-Company**: Monitors both NVIDIA and Intel simultaneously
+- 🚀 **Multi-Company**: Monitors NVIDIA, Intel, IBM, and Microsoft simultaneously
 - ⏰ **Reliable Scheduling**: Multiple cron schedules to ensure 30-minute intervals
-- 💡 **Context-Aware**: AI understands job-specific changes vs. page animations
+- 💡 **Context-Aware**: AI understands job-specific changes vs. page animations, cookies, timestamps
+
+## How It Works
+
+The system is powered entirely by AI vision analysis:
+
+1. **Screenshot Capture**: Takes full-page screenshots of job listing pages
+2. **AI Analysis**: Google Gemini AI compares before/after screenshots and identifies:
+   - ✅ New job postings (meaningful changes)
+   - ✅ Removed job postings (meaningful changes)
+   - ✅ Changed job titles or locations (meaningful changes)
+   - ❌ Resolution/layout differences (ignored)
+   - ❌ Timestamps or "posted X days ago" (ignored)
+   - ❌ Cookie banners or popups (ignored)
+3. **Decision**: AI's determination is the ONLY factor in detecting changes
+4. **Notification**: Sends Telegram alert when AI confirms meaningful job changes
+
+**Note**: Pixel comparison is performed for reference/debugging only and does NOT influence change detection.
 
 ## Setup
 
@@ -49,26 +66,29 @@ Edit `.env` and fill in your values:
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 TELEGRAM_CHAT_ID=your_chat_id_here
 
-# Optional: AI Enhancement (Recommended)
+# REQUIRED: AI Analysis
 GEMINI_API_KEY=your_gemini_api_key_here
-USE_AI_ANALYSIS=true
 
-# Detection Settings
+# Detection Settings (for reference/debugging only)
 CHANGE_THRESHOLD=0.5
 SAVE_DEBUG_IMAGES=false
 ```
 
-### 4. Get Gemini API Key (Optional but Recommended)
+### 4. Get Gemini API Key (REQUIRED)
 
 1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey)
 2. Create a free API key
 3. Add it to your `.env` file as `GEMINI_API_KEY`
 
-**Why use AI analysis?**
-- 🎯 **Smarter Detection**: Understands job content vs. page animations
-- 🚫 **Fewer False Positives**: Ignores timestamps, session IDs, loading states
+**Why AI analysis is required:**
+- 🎯 **Intelligent Detection**: Understands actual job content changes vs. visual noise
+- 📐 **Resolution Independent**: Handles different page heights and layouts automatically
+- 🚫 **No False Positives**: Ignores timestamps, cookies, session IDs, loading states, layout shifts
 - 📝 **Detailed Descriptions**: Get explanations of what actually changed
 - 💰 **Free Tier**: 1500 requests/day (enough for 31 days of 30-minute checks)
+- 🎓 **Smart Context**: Knows the difference between new jobs vs. page redesigns
+
+**Note**: Without AI analysis, the system cannot reliably detect meaningful job changes.
 
 ### 4. Test Locally
 
@@ -83,13 +103,10 @@ python test_screenshot.py
 **Required:**
 - `TELEGRAM_BOT_TOKEN`: Your Telegram bot token
 - `TELEGRAM_CHAT_ID`: Your Telegram chat ID
+- `GEMINI_API_KEY`: Google Gemini API key for AI vision analysis (REQUIRED)
 
-**AI Enhancement (Optional):**
-- `GEMINI_API_KEY`: Google Gemini API key for intelligent analysis
-- `USE_AI_ANALYSIS`: Enable/disable AI analysis (default: true)
-
-**Detection Settings:**
-- `CHANGE_THRESHOLD`: Sensitivity (0.1 = very sensitive, 2.0 = less sensitive)
+**Detection Settings (reference only):**
+- `CHANGE_THRESHOLD`: Pixel comparison reference threshold (default: 0.5) - not used for decision making
 - `SAVE_DEBUG_IMAGES`: Set to `true` to save difference images
 - `SAVE_ALL_DEBUG`: Set to `true` to save images even when no changes
 
@@ -97,37 +114,42 @@ python test_screenshot.py
 
 Set these in your repository:
 
-**Secrets:**
+**Secrets (REQUIRED):**
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`
-- `GEMINI_API_KEY` (optional, for AI analysis)
+- `GEMINI_API_KEY`
 
 **Variables (optional):**
-- `USE_AI_ANALYSIS` (default: true)
-- `CHANGE_THRESHOLD` (default: 0.5)
+- `CHANGE_THRESHOLD` (default: 0.5, for reference only)
 - `SAVE_DEBUG_IMAGES` (default: false)
 
 ## How It Works
 
 ### Screenshot Process
 1. **Navigate**: Opens each company's job page in headless Chrome
-2. **Target**: Tries to find job listing containers for focused screenshots
-3. **Capture**: Takes screenshot of job area or full page
-4. **Store**: Saves screenshot as base64 in text file
+2. **Dismiss Cookies**: Automatically dismisses cookie consent banners
+3. **Wait**: Allows page to fully load and stabilize
+4. **Capture**: Takes full-page screenshot
+5. **Store**: Saves screenshot as base64 in text file
 
-### Comparison Process
-1. **Load**: Retrieves previous screenshot from storage
-2. **Compare**: Calculates pixel-by-pixel differences
-3. **Analyze**: Determines if changes exceed threshold
-4. **Verify**: Double-checks changes for stability
-5. **Notify**: Sends Telegram alert if significant changes found
+### AI Comparison Process
+1. **Load**: Retrieves previous and current screenshots
+2. **AI Analysis**: Google Gemini AI analyzes both images to:
+   - Identify actual job content changes (new/removed/modified job titles)
+   - Ignore resolution, layout, and visual differences
+   - Ignore timestamps, cookies, session IDs, and animations
+   - Provide confidence score and detailed description
+3. **Decision**: AI's determination is the ONLY factor
+4. **Pixel Reference**: Pixel comparison runs for debugging/logging (not used for decisions)
+5. **Verify**: Double-checks changes for page stability
+6. **Notify**: Sends Telegram alert if AI confirms meaningful changes
 
 ### Change Detection
-- Compares screenshots using PIL (Python Imaging Library)
-- Calculates percentage of changed pixels
-- Uses configurable threshold (default 0.5%)
-- Handles size differences automatically
-- Provides detailed change statistics
+- **Primary**: AI vision analysis understands job content semantically
+- **Secondary**: Pixel comparison metrics available for reference/debugging
+- Handles different page sizes and layouts automatically
+- Ignores visual noise (cookies, timestamps, animations, layout shifts)
+- Provides detailed AI descriptions of what changed
 
 ### AI-Enhanced Analysis (Google Gemini Flash)
 
