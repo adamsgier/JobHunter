@@ -23,6 +23,13 @@ from selenium.webdriver.support import expected_conditions as EC
 from PIL import Image, ImageChops
 import io
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not required if env vars are set in system
+
 # Import AI vision module
 try:
     from ai_vision import create_ai_analyzer
