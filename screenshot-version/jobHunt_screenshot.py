@@ -147,214 +147,12 @@ def setup_selenium_driver():
 def wait_for_page_load(driver, timeout=20):
     """Wait for page to fully load"""
     try:
-        # Wait for body to be present
-        WebDriverWait(driver, timeout).until(
-            EC.presence_of_element_located((By.TAG_NAME, "body"))
-        )
-        
-        # Wait for any loading indicators to disappear
-        loading_selectors = [
-            '[data-automation-id="loadingIndicator"]',
-            '.loading',
-            '.spinner',
-            '[aria-label="Loading"]'
-        ]
-        
-        for selector in loading_selectors:
-            try:
-                WebDriverWait(driver, 5).until_not(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, selector))
-                )
-            except:
-                pass  # Loading indicator might not exist
-                
-        # Additional wait for dynamic content
-        time.sleep(3)
+        WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+        time.sleep(3)  # Wait for dynamic content
         return True
-        
     except Exception as e:
         logger.warning(f"Page load wait failed: {e}")
         return False
-
-# COMMENTED OUT: AI handles cookies automatically, no need to dismiss them
-# def dismiss_cookie_banners(driver):
-#     """Attempt to dismiss cookie consent banners"""
-#     # Try multiple strategies to dismiss cookie banners
-#     
-#     # Strategy 1: Click buttons by text content (most reliable)
-#     click_by_text_script = """
-#         const buttonTexts = [
-#             'Accept Cookies',
-#             'Accept required',
-#             'Accept all',
-#             'Accept All',
-#             'I accept',
-#             'I Accept',
-#             'Accept',
-#             'Got it',
-#             'OK',
-#             'I agree',
-#             'Agree'
-#         ];
-#         
-#         let clicked = false;
-#         
-#         // Try to find and click buttons with matching text
-#         buttonTexts.forEach(text => {
-#             if (clicked) return;
-#             
-#             const buttons = Array.from(document.querySelectorAll('button, a'));
-#             for (let button of buttons) {
-#                 if (button.textContent.trim() === text || 
-#                     button.textContent.includes(text)) {
-#                     try {
-#                         button.click();
-#                         console.log('Clicked button with text: ' + text);
-#                         clicked = true;
-#                         return true;
-#                     } catch(e) {}
-#                 }
-#             }
-#         });
-#         
-#         return clicked;
-#     """
-#     
-#     try:
-#         # Strategy 1: Click by text content using JavaScript
-#         clicked = driver.execute_script(click_by_text_script)
-#         if clicked:
-#             logger.info("🍪 Clicked cookie consent button using text matching")
-#             time.sleep(2)
-#             return True
-#     except Exception as e:
-#         logger.debug(f"Text-based cookie dismissal failed: {e}")
-#     
-#     # Strategy 2: Try XPath for text-based matching
-#     xpath_selectors = [
-#         "//button[contains(text(), 'Accept Cookies')]",
-#         "//button[contains(text(), 'Accept required')]",
-#         "//button[contains(text(), 'Accept all')]",
-#         "//button[contains(text(), 'Accept')]",
-#         "//button[contains(text(), 'I accept')]",
-#         "//button[contains(text(), 'Got it')]",
-#         "//a[contains(text(), 'Accept')]"
-#     ]
-#     
-#     try:
-#         for xpath in xpath_selectors:
-#             try:
-#                 buttons = driver.find_elements(By.XPATH, xpath)
-#                 for button in buttons:
-#                     if button.is_displayed():
-#                         button.click()
-#                         logger.info(f"🍪 Clicked cookie button via XPath")
-#                         time.sleep(2)
-#                         return True
-#             except:
-#                 continue
-#     except Exception as e:
-#         logger.debug(f"XPath cookie dismissal failed: {e}")
-#     
-#     # Strategy 3: Try CSS selectors
-#     cookie_selectors = [
-#         # Intel and IBM specific
-#         'button[class*="accept"]',
-#         # Generic cookie buttons
-#         'button[id*="accept"]',
-#         'button[id*="cookie"]',
-#         'button[class*="cookie"]',
-#         'button[id*="consent"]',
-#         'a[id*="accept"]',
-#         'a[class*="accept"]',
-#         # IBM Avature specific
-#         '[class*="truste"] button',
-#         '#truste-consent-button',
-#         '.truste-button',
-#         # Common GDPR/cookie consent frameworks
-#         '[aria-label*="Accept"]',
-#         '[aria-label*="consent"]',
-#         '[aria-label*="cookie"]',
-#         # OneTrust
-#         '#onetrust-accept-btn-handler',
-#         '.onetrust-close-btn-handler',
-#         # Cookiebot
-#         '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
-#         '.CybotCookiebotDialogBodyButton',
-#         # Other common frameworks
-#         '[data-testid*="cookie"]',
-#         '[data-testid*="accept"]',
-#         '[data-qa*="cookie"]',
-#         '[data-qa*="accept"]'
-#     ]
-#     
-#     try:
-#         for selector in cookie_selectors:
-#             try:
-#                 buttons = driver.find_elements(By.CSS_SELECTOR, selector)
-#                 for button in buttons:
-#                     if button.is_displayed():
-#                         button.click()
-#                         logger.info(f"🍪 Clicked cookie consent button: {selector}")
-#                         time.sleep(2)
-#                         return True
-#             except:
-#                 continue
-#     except Exception as e:
-#         logger.debug(f"CSS selector cookie dismissal failed: {e}")
-#     
-#     # Strategy 4: Hide cookie banners with JavaScript if clicking didn't work
-#     hide_script = """
-#         const hideSelectors = [
-#             '[id*="cookie"]',
-#             '[class*="cookie"]',
-#             '[id*="consent"]',
-#             '[class*="consent"]',
-#             '[class*="truste"]',
-#             '[id*="truste"]',
-#             '.notice-banner',
-#             '.cookie-notice',
-#             '.cookie-banner',
-#             '#onetrust-banner-sdk',
-#             '#cookiebanner',
-#             '[role="dialog"]',
-#             '.modal'
-#         ];
-#         
-#         hideSelectors.forEach(selector => {
-#             try {
-#                 document.querySelectorAll(selector).forEach(el => {
-#                     const text = el.textContent.toLowerCase();
-#                     if (text.includes('cookie') || text.includes('consent')) {
-#                         el.style.display = 'none';
-#                         el.style.visibility = 'hidden';
-#                         el.remove();
-#                     }
-#                 });
-#             } catch(e) {}
-#         });
-#     """
-#     
-#     try:
-#         driver.execute_script(hide_script)
-#         logger.info("🍪 Attempted to hide cookie banners with JavaScript")
-#         time.sleep(1)
-#     except Exception as e:
-#         logger.debug(f"JavaScript hide failed: {e}")
-#     
-#     return False
-
-# COMMENTED OUT: Unused function, we take full-page screenshots that AI analyzes
-# def find_job_container(driver, selectors):
-#     """Find the main job listings container"""
-#     for selector in selectors:
-#         try:
-#             container = driver.find_element(By.CSS_SELECTOR, selector)
-#             if container and container.is_displayed():
-#                 return container
-#         except:
-#             continue
-#     return None
 
 def take_screenshot(url: str, company_name: str, company_config: dict) -> Optional[str]:
     """Take a screenshot of the job page and return base64 encoded image"""
@@ -363,48 +161,25 @@ def take_screenshot(url: str, company_name: str, company_config: dict) -> Option
         return None
     
     try:
-        logger.info(f"📸 Taking screenshot of {company_name} job page...")
-        
-        # Navigate to the page
         driver.get(url)
+        wait_for_page_load(driver)
         
-        # Wait for page to load
-        if not wait_for_page_load(driver):
-            logger.warning(f"Page load timeout for {company_name}, proceeding anyway")
-        
-        # COMMENTED OUT: AI handles cookies automatically in screenshots
-        # dismiss_cookie_banners(driver)
-        
-        # Take full-page screenshot using Chrome DevTools Protocol
-        logger.info(f"📄 Taking full-page screenshot for {company_name}")
-        
-        # Get page dimensions
+        # Capture full page
         page_height = driver.execute_script("return document.body.scrollHeight")
         page_width = driver.execute_script("return document.body.scrollWidth")
-        
-        # Set window size to capture full page
         original_size = driver.get_window_size()
         driver.set_window_size(page_width, page_height)
-        time.sleep(1)  # Allow page to adjust
+        time.sleep(1)
         
-        # Take screenshot
         screenshot_png = driver.get_screenshot_as_png()
-        screenshot_method = "full-page"
-        
-        # Restore original window size
         driver.set_window_size(original_size['width'], original_size['height'])
         
-        # Convert to base64 for storage
         screenshot_b64 = base64.b64encode(screenshot_png).decode('utf-8')
-        
-        # Calculate size info
-        size_kb = len(screenshot_png) / 1024
-        logger.info(f"📸 Screenshot captured for {company_name}: {size_kb:.1f}KB ({screenshot_method}, {page_width}x{page_height}px)")
-        
+        logger.info(f"📸 {company_name}: {len(screenshot_png)/1024:.1f}KB ({page_width}x{page_height}px)")
         return screenshot_b64
         
     except Exception as e:
-        logger.error(f"❌ Error taking screenshot of {company_name}: {e}")
+        logger.error(f"❌ Screenshot error {company_name}: {e}")
         return None
     finally:
         try:
@@ -461,61 +236,32 @@ def compare_screenshots(screenshot1_b64: str, screenshot2_b64: str, company_name
     """Compare two screenshots and return detailed difference analysis"""
     try:
         if not screenshot1_b64 or not screenshot2_b64:
-            return {
-                "changed": True, 
-                "reason": "Missing screenshot data",
-                "change_percentage": 100.0
-            }
+            return {"changed": True, "reason": "Missing screenshot data", "change_percentage": 100.0}
         
-        # Decode base64 images
         img1_data = base64.b64decode(screenshot1_b64)
         img2_data = base64.b64decode(screenshot2_b64)
-        
         img1 = Image.open(io.BytesIO(img1_data))
         img2 = Image.open(io.BytesIO(img2_data))
         
-        # Log image information
-        logger.info(f"Comparing {company_name} screenshots: {img1.size} vs {img2.size}")
+        logger.info(f"Comparing {company_name}: {img1.size} vs {img2.size}")
         
-        # Handle size differences - this is normal and expected
         if img1.size != img2.size:
-            logger.info(f"📐 {company_name} screenshot size differs: {img1.size} vs {img2.size} - this is normal, AI will handle it")
-            # Resize the newer image to match the older one for pixel comparison (reference only)
             img2 = img2.resize(img1.size, Image.Resampling.LANCZOS)
-        
-        # Convert to same mode if different
         if img1.mode != img2.mode:
             img2 = img2.convert(img1.mode)
         
         # STAGE 1: Fast pixel comparison as pre-filter
         diff = ImageChops.difference(img1, img2)
-        
-        # Convert difference to grayscale for analysis
-        diff_gray = diff.convert('L')
-        histogram = diff_gray.histogram()
-        
-        # Calculate change statistics
+        histogram = diff.convert('L').histogram()
         total_pixels = sum(histogram)
-        changed_pixels = sum(histogram[1:])  # All non-zero values (pixels that changed)
+        changed_pixels = sum(histogram[1:])
         change_percentage = (changed_pixels / total_pixels) * 100 if total_pixels > 0 else 0
         
-        # Calculate additional metrics
-        max_diff = max(histogram[1:]) if changed_pixels > 0 else 0
-        avg_change = sum(i * histogram[i] for i in range(1, 256)) / changed_pixels if changed_pixels > 0 else 0
+        result = {"changed": False, "change_percentage": round(change_percentage, 3),
+                  "threshold": CHANGE_THRESHOLD, "total_pixels": total_pixels,
+                  "changed_pixels": changed_pixels,
+                  "reason": f"No pixel changes ({change_percentage:.3f}% < {CHANGE_THRESHOLD}%)"}
         
-        # Store pixel comparison metrics
-        result = {
-            "changed": False,
-            "change_percentage": round(change_percentage, 3),
-            "threshold": CHANGE_THRESHOLD,
-            "total_pixels": total_pixels,
-            "changed_pixels": changed_pixels,
-            "max_diff_intensity": max_diff,
-            "avg_change_intensity": round(avg_change, 2),
-            "reason": f"No pixel changes detected ({change_percentage:.3f}% < {CHANGE_THRESHOLD}%)"
-        }
-        
-        # Check if pixel comparison detected changes
         pixel_changed = change_percentage > CHANGE_THRESHOLD
         
         if not pixel_changed:
@@ -613,173 +359,81 @@ def compare_screenshots(screenshot1_b64: str, screenshot2_b64: str, company_name
         return result
         
     except Exception as e:
-        logger.error(f"❌ Error comparing screenshots for {company_name}: {e}")
-        return {
-            "changed": True, 
-            "reason": f"Comparison error: {str(e)}",
-            "change_percentage": 100.0
-        }
+        logger.error(f"❌ Comparison error {company_name}: {e}")
+        return {"changed": True, "reason": f"Error: {str(e)}", "change_percentage": 100.0}
 
 def load_previous_screenshot(company_config: dict) -> Optional[str]:
     """Load previous screenshot from file"""
-    screenshot_file = company_config["screenshot_file"]
     try:
+        screenshot_file = company_config["screenshot_file"]
         if os.path.exists(screenshot_file):
             with open(screenshot_file, 'r') as f:
-                screenshot_data = f.read().strip()
-            
-            # Validate base64 format (check length and basic base64 characters)
-            if len(screenshot_data) > 100:
-                # Basic validation for base64 format
-                import re
-                if re.match(r'^[A-Za-z0-9+/]*={0,2}$', screenshot_data):
-                    return screenshot_data
-                else:
-                    logger.warning(f"Invalid base64 format in {screenshot_file}, ignoring")
-                    return None
-            else:
-                logger.warning(f"Screenshot file {screenshot_file} too short, ignoring")
-                return None
+                data = f.read().strip()
+            return data if len(data) > 100 else None
     except Exception as e:
-        logger.error(f"Error loading previous screenshot from {screenshot_file}: {e}")
+        logger.error(f"Error loading screenshot: {e}")
     return None
 
 def save_screenshot(screenshot_b64: str, company_config: dict):
     """Save screenshot to file"""
-    screenshot_file = company_config["screenshot_file"]
     try:
-        with open(screenshot_file, 'w') as f:
+        with open(company_config["screenshot_file"], 'w') as f:
             f.write(screenshot_b64)
-        
-        size_kb = len(screenshot_b64) * 3 / 4 / 1024  # Rough base64 to binary size
-        logger.info(f"💾 Saved screenshot to {screenshot_file} ({size_kb:.1f}KB)")
+        logger.info(f"💾 Saved {company_config['screenshot_file']}")
     except Exception as e:
-        logger.error(f"Error saving screenshot to {screenshot_file}: {e}")
+        logger.error(f"Error saving screenshot: {e}")
 
-def should_run_check() -> bool:
-    """Check if script should run - simplified without duplicate prevention"""
-    # Always run when scheduled - no duplicate prevention needed with single schedule
-    logger.info("✅ Running scheduled job check")
-    return True
+
 
 def check_company_jobs(company_name: str, company_config: dict) -> dict:
     """Check jobs for a single company using screenshot comparison"""
     try:
-        logger.info(f"🔍 Checking {company_name} jobs with screenshot method...")
-        logger.info(f"URL: {company_config['url']}")
+        logger.info(f"🔍 Checking {company_name}...")
         
-        # Take current screenshot
         current_screenshot = take_screenshot(company_config["url"], company_name, company_config)
         if not current_screenshot:
-            logger.error(f"❌ Failed to capture screenshot for {company_name}")
-            return {
-                "changed": False,
-                "error": True,
-                "first_run": False,
-                "method": "screenshot",
-                "company": company_name,
-                "reason": "Failed to capture screenshot"
-            }
+            return {"changed": False, "error": True, "first_run": False, "method": "screenshot", 
+                    "company": company_name, "reason": "Screenshot capture failed"}
         
-        # Load previous screenshot
         previous_screenshot = load_previous_screenshot(company_config)
         
         if not previous_screenshot:
-            # First run - save baseline
             save_screenshot(current_screenshot, company_config)
-            
-            # Run AI analysis on first screenshot to extract job titles
-            ai_baseline = None
-            if ai_analyzer and ai_analyzer.is_enabled():
-                logger.info(f"🤖 Analyzing baseline screenshot for {company_name}...")
-                screenshot_bytes = base64.b64decode(current_screenshot)
-                ai_baseline = ai_analyzer.analyze_single_screenshot(screenshot_bytes, company_name, is_baseline=True)
-                
-                # Extract and save initial job titles if available
-                if ai_baseline and "description" in ai_baseline:
-                    logger.info(f"📚 Extracting initial job titles for {company_name}...")
-                    # We can't extract from single screenshot analysis, will populate on first comparison
-            
-            logger.info(f"📝 {company_name} first screenshot - baseline established")
-            result = {
-                "changed": False,
-                "first_run": True,
-                "url": company_config["url"],
-                "error": False,
-                "method": "screenshot",
-                "reason": "First run - baseline established",
-                "company": company_name
-            }
-            
-            if ai_baseline:
-                result["ai_baseline"] = ai_baseline
-                
-            return result
+            logger.info(f"📝 {company_name} baseline established")
+            return {"changed": False, "first_run": True, "url": company_config["url"], 
+                    "error": False, "method": "screenshot", "company": company_name,
+                    "reason": "First run - baseline established"}
         
-        # Compare screenshots
         comparison = compare_screenshots(previous_screenshot, current_screenshot, company_name)
+        logger.info(f"{company_name}: Changed={comparison['changed']}, Reason={comparison['reason']}")
         
-        # Enhanced logging
-        logger.info(f"{company_name} screenshot comparison:")
-        logger.info(f"  Changed: {comparison['changed']}")
-        logger.info(f"  Reason: {comparison['reason']}")
-        
-        # Double-check mechanism for screenshot changes
+        # Double-check if changes detected
         if comparison["changed"]:
-            logger.info(f"🔍 Double-checking {company_name} screenshot change...")
             time.sleep(5)
-            
             verify_screenshot = take_screenshot(company_config["url"], company_name, company_config)
             if verify_screenshot:
                 verify_comparison = compare_screenshots(current_screenshot, verify_screenshot, company_name)
                 if verify_comparison["changed"] and verify_comparison["change_percentage"] > 1.0:
-                    logger.warning(f"⚠️  {company_name} page is visually unstable")
-                    logger.warning(f"Original vs Verify: {verify_comparison['change_percentage']:.3f}% difference")
-                    # Use the verification screenshot as it might be more stable
+                    logger.warning(f"⚠️ {company_name} page unstable")
                     current_screenshot = verify_screenshot
                     comparison = compare_screenshots(previous_screenshot, current_screenshot, company_name)
-                else:
-                    logger.info(f"✅ {company_name} screenshot change confirmed (stable on recheck)")
         
-        # Save current screenshot
         save_screenshot(current_screenshot, company_config)
         
-        result = {
-            "changed": comparison["changed"],
-            "first_run": False,
-            "url": company_config["url"],
-            "error": False,
-            "method": "screenshot",
-            "change_percentage": comparison.get("change_percentage", 0),
-            "threshold": CHANGE_THRESHOLD,
-            "reason": comparison.get("reason", "Unknown"),
-            "comparison_details": comparison,
-            "company": company_name
-        }
+        result = {"changed": comparison["changed"], "first_run": False, "url": company_config["url"],
+                  "error": False, "method": "screenshot", "change_percentage": comparison.get("change_percentage", 0),
+                  "threshold": CHANGE_THRESHOLD, "reason": comparison.get("reason", "Unknown"),
+                  "comparison_details": comparison, "company": company_name}
         
-        # Add AI analysis to result if available
         if "ai_analysis" in comparison:
             result["ai_analysis"] = comparison["ai_analysis"]
-            logger.info(f"🤖 AI Analysis for {company_name}: {comparison['ai_analysis'].get('description', 'No description')}")
-        
-        if comparison["changed"]:
-            logger.info(f"🔥 {company_name} visual content changed!")
-            logger.warning(f"CHANGE DETECTED for {company_name}: {comparison['reason']}")
-        else:
-            logger.info(f"✅ No visual changes detected for {company_name}")
         
         return result
     
     except Exception as e:
-        logger.error(f"❌ Error checking {company_name}: {e}")
-        return {
-            "changed": False,
-            "error": True,
-            "first_run": False,
-            "method": "screenshot",
-            "reason": f"Error: {str(e)}",
-            "company": company_name
-        }
+        logger.error(f"❌ Error {company_name}: {e}")
+        return {"changed": False, "error": True, "first_run": False, "method": "screenshot",
+                "reason": f"Error: {str(e)}", "company": company_name}
 
 def send_telegram_notification(message: str) -> bool:
     """Send notification via Telegram"""
@@ -840,35 +494,9 @@ def update_job_state(company_results: dict):
 
 def main():
     """Main job checking function"""
-    logger.info("🚀 Starting Screenshot-Based Multi-Company Job Hunter")
-    
-    # Environment information
-    import platform
-    import socket
-    logger.info(f"Environment info:")
-    logger.info(f"  Platform: {platform.system()} {platform.release()}")
-    logger.info(f"  Python: {platform.python_version()}")
-    logger.info(f"  Hostname: {socket.gethostname()}")
-    logger.info(f"  Working directory: {os.getcwd()}")
-    logger.info(f"  Current time: {datetime.now().isoformat()}")
-    logger.info(f"  Detection method: Screenshot comparison")
-    logger.info(f"  Change threshold: {CHANGE_THRESHOLD}%")
-    
-    # Check existing screenshot files
-    for company_name, config in COMPANIES.items():
-        screenshot_file = config["screenshot_file"]
-        if os.path.exists(screenshot_file):
-            file_size = os.path.getsize(screenshot_file)
-            logger.info(f"Found existing {company_name} screenshot: {file_size} bytes")
-        else:
-            logger.info(f"No existing {company_name} screenshot found")
-    
-    # Debug environment variables
+    logger.info("🚀 Starting Screenshot Job Hunter")
     is_github_actions = os.getenv('GITHUB_ACTIONS') == 'true'
-    logger.info(f"Running in GitHub Actions: {is_github_actions}")
-    logger.info(f"Telegram config:")
-    logger.info(f"  BOT_TOKEN present: {'Yes' if BOT_TOKEN else 'No'}")
-    logger.info(f"  CHAT_ID present: {'Yes' if CHAT_ID else 'No'}")
+    logger.info(f"Environment: {'GitHub Actions' if is_github_actions else 'Local'}, Threshold: {CHANGE_THRESHOLD}%")
     
     if not BOT_TOKEN or not CHAT_ID:
         logger.error("❌ Missing Telegram credentials")
@@ -914,10 +542,9 @@ def main():
                     "company": company_name
                 }
     
-    elapsed_time = time.time() - start_time
-    logger.info(f"⏱️  All checks completed in {elapsed_time:.2f} seconds")
+    logger.info(f"⏱️ All checks completed in {time.time() - start_time:.2f} seconds")
     
-    # Send notifications based on results
+    # Send notifications
     if any_changes:
         changed_companies = [name for name, result in company_results.items() if result["changed"]]
         
@@ -985,22 +612,11 @@ def main():
     else:
         logger.info("✅ No visual changes detected for any company - no notification sent")
     
-    # Update tracking state
     update_job_state(company_results)
-    
-    # Summary
-    current_time = datetime.now()
-    logger.info("📊 Run Summary:")
-    logger.info(f"  Environment: {'GitHub Actions' if is_github_actions else 'Local'}")
-    logger.info(f"  Start time: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
-    logger.info(f"  Detection method: Screenshot comparison")
-    logger.info(f"  Change threshold: {CHANGE_THRESHOLD}%")
-    logger.info(f"  Companies checked: {len(company_results)}")
-    logger.info(f"  Visual changes detected: {sum(1 for r in company_results.values() if r.get('changed', False))}")
-    logger.info(f"  First runs: {sum(1 for r in company_results.values() if r.get('first_run', False))}")
-    logger.info(f"  Errors: {sum(1 for r in company_results.values() if r.get('error', False))}")
-    
-    logger.info("✅ Screenshot-based job check completed")
+    changes = sum(1 for r in company_results.values() if r.get('changed', False))
+    errors = sum(1 for r in company_results.values() if r.get('error', False))
+    logger.info(f"📊 Summary: {len(company_results)} checked, {changes} changed, {errors} errors")
+    logger.info("✅ Complete")
 
 if __name__ == "__main__":
     main()
