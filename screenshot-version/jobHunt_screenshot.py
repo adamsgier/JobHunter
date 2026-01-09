@@ -217,31 +217,48 @@ def save_known_jobs(known_jobs: dict):
     except Exception as e:
         logger.error(f"Error saving known jobs: {e}")
 
-def update_known_jobs(company_name: str, new_job_titles: list) -> int:
-    """Add newly discovered job titles to the known jobs list"""
-    if not new_job_titles:
-        return 0
+def sync_known_jobs(company_name: str, visible_job_titles: list) -> dict:
+    """Synchronize known jobs with currently visible jobs - add new ones and remove old ones"""
+    if not visible_job_titles:
+        return {"added": 0, "removed": 0, "total": 0}
     
     known_jobs = load_known_jobs()
     
     if company_name not in known_jobs:
         known_jobs[company_name] = []
     
-    # Add only truly new titles
-    existing_set = set(known_jobs[company_name])
-    added_count = 0
+    existing_jobs = set(known_jobs[company_name])
+    visible_jobs = set(title for title in visible_job_titles if title)
     
-    for title in new_job_titles:
-        if title and title not in existing_set:
-            known_jobs[company_name].append(title)
-            existing_set.add(title)
-            added_count += 1
+    # Find new jobs (in visible but not in existing)
+    new_jobs = visible_jobs - existing_jobs
+    added_count = len(new_jobs)
     
-    if added_count > 0:
+    # Find removed jobs (in existing but not in visible)
+    removed_jobs = existing_jobs - visible_jobs
+    removed_count = len(removed_jobs)
+    
+    # Update the database to match visible jobs
+    known_jobs[company_name] = list(visible_jobs)
+    
+    if added_count > 0 or removed_count > 0:
         save_known_jobs(known_jobs)
-        logger.info(f"📝 Added {added_count} new job titles to {company_name} known jobs list")
+        
+        if added_count > 0:
+            logger.info(f"✅ Added {added_count} new job titles to {company_name}")
+            for job in list(new_jobs)[:5]:  # Show first 5 new jobs
+                logger.info(f"  + {job}")
+            if added_count > 5:
+                logger.info(f"  + ... and {added_count - 5} more")
+        
+        if removed_count > 0:
+            logger.info(f"🗑️  Removed {removed_count} jobs no longer visible on {company_name}")
+            for job in list(removed_jobs)[:5]:  # Show first 5 removed jobs
+                logger.info(f"  - {job}")
+            if removed_count > 5:
+                logger.info(f"  - ... and {removed_count - 5} more")
     
-    return added_count
+    return {"added": added_count, "removed": removed_count, "total": len(visible_jobs)}
 
 def compare_screenshots(screenshot1_b64: str, screenshot2_b64: str, company_name: str) -> dict:
     """Compare two screenshots and return detailed difference analysis"""
@@ -305,11 +322,11 @@ def compare_screenshots(screenshot1_b64: str, screenshot2_b64: str, company_name
             
             logger.info(f"🤖 AI verdict for {company_name}: changes={ai_has_changes}, confidence={ai_confidence:.2f}")
             
-            # Update known jobs list with visible jobs from AFTER screenshot
+            # Synchronize known jobs list with visible jobs from AFTER screenshot
             visible_jobs_after = ai_result.get("visible_jobs_after", [])
             if visible_jobs_after:
-                newly_added = update_known_jobs(company_name, visible_jobs_after)
-                logger.info(f"📝 {company_name}: {len(visible_jobs_after)} jobs visible, {newly_added} new to database")
+                sync_result = sync_known_jobs(company_name, visible_jobs_after)
+                logger.info(f"📝 {company_name}: {sync_result['total']} jobs visible, {sync_result['added']} added, {sync_result['removed']} removed")
             
             # SPECIAL CASE: First population - don't report as changes, just populate database
             if is_first_population:
