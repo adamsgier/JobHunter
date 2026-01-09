@@ -192,7 +192,15 @@ def load_known_jobs() -> dict:
     try:
         if os.path.exists(KNOWN_JOBS_FILE):
             with open(KNOWN_JOBS_FILE, 'r') as f:
-                return json.load(f)
+                data = json.load(f)
+                # Log current jobs for each company
+                if data:
+                    logger.info(f"📚 Current jobs database summary:")
+                    for company, jobs in data.items():
+                        logger.info(f"  • {company}: {len(jobs)} jobs saved")
+                        if jobs:
+                            logger.info(f"    Sample jobs: {', '.join(jobs[:3])}{'...' if len(jobs) > 3 else ''}")
+                return data
     except Exception as e:
         logger.error(f"Error loading known jobs: {e}")
     return {}
@@ -203,6 +211,9 @@ def save_known_jobs(known_jobs: dict):
         with open(KNOWN_JOBS_FILE, 'w') as f:
             json.dump(known_jobs, f, indent=2)
         logger.info(f"💾 Saved known jobs database")
+        # Log updated job counts
+        for company, jobs in known_jobs.items():
+            logger.info(f"  • {company}: {len(jobs)} total jobs in database")
     except Exception as e:
         logger.error(f"Error saving known jobs: {e}")
 
@@ -497,6 +508,23 @@ def main():
     logger.info("🚀 Starting Screenshot Job Hunter")
     is_github_actions = os.getenv('GITHUB_ACTIONS') == 'true'
     logger.info(f"Environment: {'GitHub Actions' if is_github_actions else 'Local'}, Threshold: {CHANGE_THRESHOLD}%")
+    
+    # Log current known jobs before starting checks
+    known_jobs = load_known_jobs()
+    if known_jobs:
+        logger.info("\n📊 Current Known Jobs Summary:")
+        for company, jobs in known_jobs.items():
+            logger.info(f"  🏢 {company}: {len(jobs)} jobs tracked")
+            if jobs:
+                # Show first 5 jobs as sample
+                sample_jobs = jobs[:5]
+                for i, job in enumerate(sample_jobs, 1):
+                    logger.info(f"    {i}. {job}")
+                if len(jobs) > 5:
+                    logger.info(f"    ... and {len(jobs) - 5} more jobs")
+    else:
+        logger.info("📊 No known jobs in database yet (first run)")
+    logger.info("")
     
     if not BOT_TOKEN or not CHAT_ID:
         logger.error("❌ Missing Telegram credentials")
