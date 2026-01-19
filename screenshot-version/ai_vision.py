@@ -26,7 +26,8 @@ class AIVisionAnalyzer:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key
         self.client = None
-        self.model_name = "gemma-3-12b-it"  # Gemma 3 12B with instruction tuning
+        # Use Gemma 3 12B with instruction tuning
+        self.model_name = os.getenv("GEMINI_MODEL", "gemma-3-12b-it")
         self.enabled = False
         
         if not GEMINI_AVAILABLE:
@@ -107,6 +108,47 @@ class AIVisionAnalyzer:
             2. AFTER: Current screenshot of the job page
             {known_jobs_context}
             
+            **STEP 1: EXTRACT ALL VISIBLE JOBS IN AFTER SCREENSHOT**
+            Look at the AFTER screenshot carefully. Scan from top to bottom.
+            Extract the COMPLETE list of every job title you can see.
+            
+            **EXTRACTION PROCESS - FOLLOW THESE STEPS**:
+            1. Start at the TOP of the AFTER screenshot
+            2. Identify the FIRST job listing - extract its title
+            3. Move DOWN to the next job listing - extract its title
+            4. Continue this process for EVERY job listing you see
+            5. Don't stop until you reach the BOTTOM of the screenshot
+            6. Count how many job titles you extracted
+            7. Verify: "Did I scan the entire page? Are there any jobs I missed?"
+            
+            **EXAMPLE OF COMPLETE EXTRACTION**:
+            If you see 5 job listings on the page, your visible_jobs_after should have 5 entries:
+            [
+              "Job Title 1",
+              "Job Title 2", 
+              "Job Title 3",
+              "Job Title 4",
+              "Job Title 5"
+            ]
+            
+            NOT just the first 2-3 like this (WRONG):
+            [
+              "Job Title 1",
+              "Job Title 2",
+              "Job Title 3"
+            ]
+            
+            Common job listing formats to look for:
+            - Job title as a heading or clickable link (usually larger text)
+            - Posted date nearby (e.g., "Posted 2 days ago")
+            - Location information (e.g., "Haifa, Israel")
+            - Job ID or reference number
+            - May be in a list, grid, or card layout
+            - May have company logo or icon
+            
+            **IMPORTANT**: Don't stop after finding 2-3 jobs! Keep scanning the entire screenshot.
+            Extract EVERY job listing visible, even if it's at the bottom or partially cut off.
+            
             **CRITICAL UNDERSTANDING**: 
             These are PARTIAL VIEWS of a larger job list. The screenshots show what's VISIBLE at that moment.
             Jobs can appear/disappear due to scrolling, pagination, sorting, or loading - this is NOT a change!
@@ -128,12 +170,23 @@ class AIVisionAnalyzer:
             ❌ Jobs that appear "cut off" at bottom due to page height differences
             
             **ANALYSIS APPROACH**:
-            1. Extract ALL job titles visible in AFTER screenshot
-            2. For EACH job title in AFTER:
+            1. **CAREFULLY SCAN** the entire AFTER screenshot from TOP TO BOTTOM
+            2. Extract **EVERY SINGLE JOB TITLE** visible in AFTER - don't skip any, even if partially visible
+            3. Count how many jobs you extracted - verify this matches what you see in the screenshot
+            4. For EACH job title in AFTER:
                a. Is it in BEFORE? If YES → not new (skip)
                b. Is it in historical list? If YES → not new (skip)
                c. If NO to both → TRULY NEW job posting!
-            3. Only report has_changes=true if you found TRULY NEW jobs (step 2c)
+            5. Only report has_changes=true if you found TRULY NEW jobs (step 4c)
+            
+            **CRITICAL**: The "visible_jobs_after" field MUST contain **EVERY JOB LISTING** you can see in the AFTER screenshot.
+            Scroll through the entire image mentally. Don't stop at 2-3 jobs - keep extracting until you've found them all!
+            
+            **BEFORE RESPONDING**:
+            1. Count the number of job listings you extracted
+            2. Look at the AFTER screenshot one more time
+            3. Verify: "Did I extract ALL visible jobs, or did I stop early?"
+            4. If you only found 2-3 jobs, look again - there are likely more below!
             
             **RESPOND** in this exact JSON format:
             {{
@@ -141,7 +194,8 @@ class AIVisionAnalyzer:
                 "description": "Brief description: 'X truly new job(s) posted' or 'No new job postings detected'",
                 "confidence": 0.0-1.0,
                 "details": ["ONLY list job titles that are TRULY NEW (not in BEFORE or historical list)"],
-                "visible_jobs_after": ["list of ALL job titles visible in AFTER screenshot"]
+                "visible_jobs_after": ["COMPLETE list of ALL job titles visible in AFTER screenshot - extract EVERY SINGLE ONE"],
+                "jobs_count": <number of jobs you extracted - this should match the length of visible_jobs_after>
             }}
             
             Be EXTREMELY conservative - only report has_changes=true for TRULY NEW job postings.
