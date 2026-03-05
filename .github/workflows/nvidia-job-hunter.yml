@@ -1,11 +1,21 @@
 name: AI-Enhanced Screenshot Job Hunter
 
+# Primary trigger: cron-job.org (external service) fires this workflow via
+# workflow_dispatch every 20 minutes during hours 05:00–20:59 UTC.
+# Run .github/workflows/setup-cronjob.yml once to register the cron-job.org job.
+#
+# Required secrets for cron-job.org integration:
+#   CRONJOB_API_KEY  — cron-job.org API key (used by setup-cronjob.yml)
+#   GH_PAT           — GitHub PAT with 'workflow' scope (used by cron-job.org
+#                      to POST to the workflow_dispatch API endpoint)
+
 on:
   schedule:
-    # Run every 20 minutes, but skip 00:00-08:00 (runs from 05:00-20:59)
+    # Fallback GitHub schedule – kept in case cron-job.org is unavailable.
+    # Note: GitHub may throttle or skip these for low-activity repositories.
     - cron: '*/20 5-20 * * *'    # Run at :00, :20, :40 of hours 05-20
-    
-  workflow_dispatch: # Allow manual trigger from GitHub Actions tab
+
+  workflow_dispatch: # Triggered by cron-job.org (and manual runs)
 
 permissions:
   contents: write  # Allow pushing commits back to repository

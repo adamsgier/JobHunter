@@ -1,0 +1,117 @@
+name: Setup cron-job.org Scheduler
+
+# This workflow creates (or updates) a cron-job.org job that triggers
+# the main job hunter workflow every 20 minutes from 05:00–20:59 UTC.
+#
+# Required secrets:
+#   CRONJOB_API_KEY  — Your cron-job.org API key (Settings → API in the console)
+#   GH_PAT           — GitHub Personal Access Token with the 'workflow' scope
+#                      (used by cron-job.org to dispatch the workflow via GitHub API)
+#
+# Run this workflow once manually after configuring the secrets above.
+# Re-run any time you need to update the schedule.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-cronjob:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create or update cron-job.org scheduler
+        env:
+          CRONJOB_API_KEY: ${{ secrets.CRONJOB_API_KEY }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          set -euo pipefail
+
+          REPO="${{ github.repository }}"
+          BRANCH="${{ github.ref_name }}"
+          WORKFLOW_FILE="nvidia-job-hunter.yml"
+          DISPATCH_URL="https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW_FILE}/dispatches"
+          JOB_TITLE="JobHunter - Trigger every 20 min (05:00-20:59 UTC)"
+
+          echo "=== Checking for existing cron-job.org job ==="
+          EXISTING=$(curl -sf \
+            -H "Authorization: Bearer ${CRONJOB_API_KEY}" \
+            -H "Content-Type: application/json" \
+            https://api.cron-job.org/jobs)
+
+          # Find an existing job by title (returns empty string if not found)
+          JOB_ID=$(python3 - <<PYEOF
+          import json, sys
+          data = json.loads('''${EXISTING}''')
+          for job in data.get("jobs", []):
+              if job.get("title") == "${JOB_TITLE}":
+                  print(job["jobId"])
+                  break
+          PYEOF
+          )
+
+          # Build the JSON payload using Python to ensure correct escaping
+          PAYLOAD=$(python3 - <<PYEOF
+          import json
+          payload = {
+              "job": {
+                  "title": "${JOB_TITLE}",
+                  "url": "${DISPATCH_URL}",
+                  "enabled": True,
+                  "saveResponses": True,
+                  # POST method (requestMethod 1 = POST)
+                  "requestMethod": 1,
+                  "extendedData": {
+                      "headers": {
+                          "Authorization": "Bearer ${GH_PAT}",
+                          "Accept": "application/vnd.github.v3+json",
+                          "Content-Type": "application/json"
+                      },
+                      # body must be a JSON-encoded string
+                      "body": json.dumps({"ref": "${BRANCH}"})
+                  },
+                  "schedule": {
+                      "timezone": "UTC",
+                      "expiresAt": 0,
+                      # Hours 05–20 inclusive
+                      "hours": list(range(5, 21)),
+                      # Every day of the month
+                      "mdays": [-1],
+                      # At :00, :20, and :40 of each selected hour
+                      "minutes": [0, 20, 40],
+                      # Every month
+                      "months": [-1],
+                      # Every day of the week
+                      "wdays": [-1]
+                  }
+              }
+          }
+          print(json.dumps(payload))
+          PYEOF
+          )
+
+          if [ -n "$JOB_ID" ]; then
+            echo "📝 Updating existing cron-job.org job (ID: ${JOB_ID})..."
+            RESPONSE=$(curl -sf -X PATCH \
+              -H "Authorization: Bearer ${CRONJOB_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD" \
+              "https://api.cron-job.org/jobs/${JOB_ID}")
+            echo "✅ Cron job updated successfully (ID: ${JOB_ID})"
+          else
+            echo "🆕 Creating new cron-job.org job..."
+            RESPONSE=$(curl -sf -X PUT \
+              -H "Authorization: Bearer ${CRONJOB_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD" \
+              https://api.cron-job.org/jobs)
+            NEW_ID=$(echo "$RESPONSE" | python3 -c "import json,sys; print(json.load(sys.stdin)['jobId'])")
+            echo "✅ Cron job created successfully (ID: ${NEW_ID})"
+          fi
+
+          echo ""
+          echo "=== Schedule Summary ==="
+          echo "  Service : cron-job.org"
+          echo "  Trigger : POST ${DISPATCH_URL}"
+          echo "  Branch  : ${BRANCH}"
+          echo "  Schedule: every 20 minutes (:00 :20 :40) during hours 05–20 UTC"
+          echo "  Timezone: UTC"
