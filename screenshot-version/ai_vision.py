@@ -26,8 +26,8 @@ class AIVisionAnalyzer:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key
         self.client = None
-        # Use Gemma 3 12B with instruction tuning
-        self.model_name = os.getenv("GEMINI_MODEL", "gemma-3-12b-it")
+        # Use Gemini 3.1 Flash Lite
+        self.model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite-preview")
         self.enabled = False
         
         if not GEMINI_AVAILABLE:
