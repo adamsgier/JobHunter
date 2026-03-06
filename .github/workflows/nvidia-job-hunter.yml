@@ -10,11 +10,6 @@ name: AI-Enhanced Screenshot Job Hunter
 #                      to POST to the workflow_dispatch API endpoint)
 
 on:
-  schedule:
-    # Fallback GitHub schedule – kept in case cron-job.org is unavailable.
-    # Note: GitHub may throttle or skip these for low-activity repositories.
-    - cron: '*/20 5-20 * * *'    # Run at :00, :20, :40 of hours 05-20
-
   workflow_dispatch: # Triggered by cron-job.org (and manual runs)
 
 permissions:
