@@ -82,7 +82,10 @@ COMPANIES = {
             '[class*="search"]',
             'main',
             'body'
-        ]
+        ],
+        # Wait for job card links to appear, meaning the SPA filters have been applied
+        "wait_for_content": "a[href*='/jobs/']",
+        "wait_timeout": 15
     }
 }
 
@@ -164,6 +167,20 @@ def take_screenshot(url: str, company_name: str, company_config: dict) -> Option
     try:
         driver.get(url)
         wait_for_page_load(driver)
+        
+        # Company-specific content wait: poll for a CSS selector that indicates
+        # the page has finished rendering filtered results (important for SPAs)
+        content_selector = company_config.get("wait_for_content")
+        if content_selector:
+            content_timeout = company_config.get("wait_timeout", 15)
+            try:
+                WebDriverWait(driver, content_timeout).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, content_selector))
+                )
+                logger.info(f"✅ {company_name}: Content loaded (found '{content_selector}')")
+                time.sleep(2)  # Extra settle time after content appears
+            except Exception:
+                logger.warning(f"⚠️ {company_name}: Timed out waiting for '{content_selector}' after {content_timeout}s, proceeding anyway")
         
         # Capture full page
         page_height = driver.execute_script("return document.body.scrollHeight")
