@@ -14,6 +14,7 @@ import hashlib
 from datetime import datetime
 from typing import Dict, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -89,6 +90,7 @@ BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 JOBS_FILE = "screenshot_jobs_state.json"
 KNOWN_JOBS_FILE = "screenshot_known_jobs.json"  # Track job titles we've seen
+_known_jobs_lock = threading.Lock()  # Protects concurrent access to KNOWN_JOBS_FILE
 
 # Settings
 CHANGE_THRESHOLD = float(os.getenv("CHANGE_THRESHOLD", "0.5"))  # % of pixels that need to change (for reference only)
@@ -132,8 +134,7 @@ def setup_selenium_driver():
     # Performance optimizations
     chrome_options.add_argument('--disable-extensions')
     chrome_options.add_argument('--disable-plugins')
-    chrome_options.add_argument('--disable-images')  # Disable image loading for faster screenshots
-    # Note: JavaScript is required for modern career portals like Microsoft
+    # Note: JavaScript and image loading are required for accurate screenshot comparison
     
     try:
         driver = webdriver.Chrome(options=chrome_options)
@@ -222,41 +223,44 @@ def sync_known_jobs(company_name: str, visible_job_titles: list) -> dict:
     if not visible_job_titles:
         return {"added": 0, "removed": 0, "total": 0}
     
-    known_jobs = load_known_jobs()
-    
-    if company_name not in known_jobs:
-        known_jobs[company_name] = []
-    
-    existing_jobs = set(known_jobs[company_name])
-    visible_jobs = set(title for title in visible_job_titles if title)
-    
-    # Find new jobs (in visible but not in existing)
-    new_jobs = visible_jobs - existing_jobs
-    added_count = len(new_jobs)
-    
-    # Find removed jobs (in existing but not in visible)
-    removed_jobs = existing_jobs - visible_jobs
-    removed_count = len(removed_jobs)
-    
-    # Update the database to match visible jobs
-    known_jobs[company_name] = list(visible_jobs)
-    
-    if added_count > 0 or removed_count > 0:
-        save_known_jobs(known_jobs)
+    with _known_jobs_lock:
+        known_jobs = load_known_jobs()
         
-        if added_count > 0:
-            logger.info(f"✅ Added {added_count} new job titles to {company_name}")
-            for job in list(new_jobs)[:5]:  # Show first 5 new jobs
-                logger.info(f"  + {job}")
-            if added_count > 5:
-                logger.info(f"  + ... and {added_count - 5} more")
+        if company_name not in known_jobs:
+            known_jobs[company_name] = []
         
-        if removed_count > 0:
-            logger.info(f"🗑️  Removed {removed_count} jobs no longer visible on {company_name}")
-            for job in list(removed_jobs)[:5]:  # Show first 5 removed jobs
-                logger.info(f"  - {job}")
-            if removed_count > 5:
-                logger.info(f"  - ... and {removed_count - 5} more")
+        existing_jobs = set(known_jobs[company_name])
+        visible_jobs = set(title for title in visible_job_titles if title)
+        
+        # Find new jobs (in visible but not in existing)
+        new_jobs = visible_jobs - existing_jobs
+        added_count = len(new_jobs)
+        
+        # Find removed jobs (in existing but not in visible)
+        # These are cleared from the database so repostings are detected as new
+        removed_jobs = existing_jobs - visible_jobs
+        removed_count = len(removed_jobs)
+        
+        # Replace database with currently visible jobs
+        # Removed jobs are cleared so if they're reposted, we'll be notified
+        known_jobs[company_name] = list(visible_jobs)
+        
+        if added_count > 0 or removed_count > 0:
+            save_known_jobs(known_jobs)
+            
+            if added_count > 0:
+                logger.info(f"✅ Added {added_count} new job titles to {company_name}")
+                for job in list(new_jobs)[:5]:  # Show first 5 new jobs
+                    logger.info(f"  + {job}")
+                if added_count > 5:
+                    logger.info(f"  + ... and {added_count - 5} more")
+            
+            if removed_count > 0:
+                logger.info(f"🗑️  Removed {removed_count} jobs no longer visible on {company_name}")
+                for job in list(removed_jobs)[:5]:  # Show first 5 removed jobs
+                    logger.info(f"  - {job}")
+                if removed_count > 5:
+                    logger.info(f"  - ... and {removed_count - 5} more")
     
     return {"added": added_count, "removed": removed_count, "total": len(visible_jobs)}
 
@@ -302,9 +306,10 @@ def compare_screenshots(screenshot1_b64: str, screenshot2_b64: str, company_name
         # STAGE 2: Pixel changes detected, run AI analysis for verification
         logger.info(f"🔍 {company_name}: Pixel changes detected ({change_percentage:.3f}%), running AI verification...")
         
-        # Load known jobs for this company
-        known_jobs_db = load_known_jobs()
-        known_jobs_list = known_jobs_db.get(company_name, [])
+        # Load known jobs for this company (thread-safe read)
+        with _known_jobs_lock:
+            known_jobs_db = load_known_jobs()
+            known_jobs_list = known_jobs_db.get(company_name, [])
         is_first_population = len(known_jobs_list) == 0
         
         if is_first_population:
@@ -435,18 +440,33 @@ def check_company_jobs(company_name: str, company_config: dict) -> dict:
         comparison = compare_screenshots(previous_screenshot, current_screenshot, company_name)
         logger.info(f"{company_name}: Changed={comparison['changed']}, Reason={comparison['reason']}")
         
-        # Double-check if changes detected
+        # Double-check page stability if changes detected (pixel-only, no AI)
         if comparison["changed"]:
             time.sleep(5)
             verify_screenshot = take_screenshot(company_config["url"], company_name, company_config)
             if verify_screenshot:
-                verify_comparison = compare_screenshots(current_screenshot, verify_screenshot, company_name)
-                if verify_comparison["changed"] and verify_comparison["change_percentage"] > 1.0:
-                    logger.warning(f"⚠️ {company_name} page unstable")
+                # Quick pixel-only check: see if page is still changing
+                verify_img1 = Image.open(io.BytesIO(base64.b64decode(current_screenshot)))
+                verify_img2 = Image.open(io.BytesIO(base64.b64decode(verify_screenshot)))
+                if verify_img1.size != verify_img2.size:
+                    verify_img2 = verify_img2.resize(verify_img1.size, Image.Resampling.LANCZOS)
+                verify_diff = ImageChops.difference(verify_img1, verify_img2)
+                verify_hist = verify_diff.convert('L').histogram()
+                verify_total = sum(verify_hist)
+                verify_changed = sum(verify_hist[1:])
+                verify_pct = (verify_changed / verify_total) * 100 if verify_total > 0 else 0
+                
+                if verify_pct > 1.0:
+                    logger.warning(f"⚠️ {company_name} page unstable ({verify_pct:.2f}% pixel diff between captures), using latest screenshot")
                     current_screenshot = verify_screenshot
-                    comparison = compare_screenshots(previous_screenshot, current_screenshot, company_name)
+                else:
+                    logger.info(f"✅ {company_name} page is stable ({verify_pct:.2f}% diff), change confirmed")
         
-        save_screenshot(current_screenshot, company_config)
+        # Only save screenshot when comparison was reliable (not an error)
+        if not comparison.get("error"):
+            save_screenshot(current_screenshot, company_config)
+        else:
+            logger.warning(f"⚠️ {company_name}: Not saving screenshot due to comparison error")
         
         result = {"changed": comparison["changed"], "first_run": False, "url": company_config["url"],
                   "error": False, "method": "screenshot", "change_percentage": comparison.get("change_percentage", 0),
@@ -547,7 +567,7 @@ def main():
         logger.error("❌ Missing Telegram credentials")
         return
     
-    # Check all companies concurrently
+    # Check all companies concurrently (thread-safe via _known_jobs_lock)
     logger.info(f"🚀 Starting concurrent checks for {len(COMPANIES)} companies...")
     start_time = time.time()
     

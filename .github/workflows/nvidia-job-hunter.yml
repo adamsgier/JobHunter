@@ -248,6 +248,7 @@ jobs:
         path: |
           screenshot-version/*.log
           screenshot-version/screenshot_jobs_state.json
+          screenshot-version/screenshot_known_jobs.json
           screenshot-version/debug_*.png
           screenshot-version/*.txt
         retention-days: 7
