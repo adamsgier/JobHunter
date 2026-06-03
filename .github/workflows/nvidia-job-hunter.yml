@@ -51,6 +51,18 @@ jobs:
         key: ${{ runner.os }}-chrome-stable-${{ hashFiles('.github/workflows/nvidia-job-hunter.yml') }}
         restore-keys: |
           ${{ runner.os }}-chrome-stable-
+
+    # Cache the ChromeDriver downloaded by selenium-manager (Selenium 4.x built-in).
+    # selenium-manager stores the compatible driver at ~/.cache/selenium/.
+    # Without this cache, the correct driver is re-downloaded on every run even
+    # though the version-mismatch fix already removed the wrong system chromedriver.
+    - name: Cache selenium-manager ChromeDriver
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/selenium
+        key: ${{ runner.os }}-selenium-manager-chrome-${{ hashFiles('screenshot-version/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-selenium-manager-chrome-
     
     # Check if Chrome is already installed
     - name: Check Chrome installation
